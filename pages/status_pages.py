@@ -191,12 +191,22 @@ class APIStatusPage(ctk.CTkFrame):
                 
                 try:
                     client = OpenAI(api_key=api_key, base_url=base_url)
-                    
+
                     try:
                         models_response = client.models.list()
                         available_models = [m.id for m in models_response.data]
-                        
-                        if model in available_models:
+
+                        def _model_match(configured, available):
+                            for a in available:
+                                if configured == a:
+                                    return True
+                                if a.endswith("/" + configured):
+                                    return True
+                                if configured.endswith("/" + a):
+                                    return True
+                            return False
+
+                        if _model_match(model, available_models):
                             self.after(0, lambda sl=status_label, il=info_label, m=model: (
                                 sl.configure(text="✓ Connected", text_color="green"),
                                 il.configure(text=f"Model: {m}")

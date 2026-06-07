@@ -76,9 +76,25 @@ def is_configured(config: dict) -> bool:
     )
 
 
+def _parse_duration(start: str, end: str) -> str:
+    """Calculate clip duration from timestamp strings (HH:MM:SS,mmm or HH:MM:SS)."""
+    try:
+        def to_secs(ts: str) -> float:
+            ts = ts.replace(",", ".").strip()
+            parts = ts.split(":")
+            if len(parts) == 3:
+                return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+            return 0.0
+        secs = int(to_secs(end) - to_secs(start))
+        return f"{secs}s" if secs < 60 else f"{secs // 60}m{secs % 60:02d}s"
+    except Exception:
+        return ""
+
+
 def notify_clips_complete(config: dict, highlights: list, video_info: dict,
                            drive_uploaded: bool = False,
-                           start_time: datetime = None) -> bool:
+                           start_time: datetime = None,
+                           output_folder: str = "") -> bool:
     """Send a 'clips done' notification. Returns True on success, False on failure."""
     tg = config.get("telegram", {})
     token = tg.get("bot_token", "").strip()
@@ -87,37 +103,58 @@ def notify_clips_complete(config: dict, highlights: list, video_info: dict,
     if not (token and chat_id):
         return False
 
-    video_title = video_info.get("title", "Unknown") if video_info else "Unknown"
+    video_info = video_info or {}
+    video_title = video_info.get("title", "Unknown")
+    channel = video_info.get("channel") or video_info.get("uploader", "")
+    video_url = video_info.get("webpage_url") or video_info.get("url", "")
     n = len(highlights)
 
-    # Build clip list
+    # Build clip list — title, duration, virality, hook
     clip_lines = []
     for i, h in enumerate(highlights, 1):
         title = h.get("title", f"Clip {i}")
         score = h.get("virality_score", "")
-        score_str = f" [{score}/10]" if score else ""
-        clip_lines.append(f"  {i}. {title}{score_str}")
+        hook = h.get("hook_text", "")
+        dur = _parse_duration(h.get("start_time", ""), h.get("end_time", ""))
+
+        score_str = f"⭐{score}/10" if score else ""
+        dur_str = f"⏳{dur}" if dur else ""
+        meta = "  ".join(filter(None, [score_str, dur_str]))
+
+        clip_lines.append(f"\n<b>{i}. {title}</b>")
+        if meta:
+            clip_lines.append(f"  {meta}")
+        if hook:
+            clip_lines.append(f"  💬 <i>{hook}</i>")
 
     clips_text = "\n".join(clip_lines) if clip_lines else "  (tidak ada clip)"
 
-    # Duration info
+    # Processing time
     duration_str = ""
     if start_time:
         secs = int((datetime.now() - start_time).total_seconds())
         m, s = divmod(secs, 60)
-        duration_str = f"\n⏱ Waktu proses: {m}m {s}s"
+        duration_str = f"\n⏱ <b>Waktu proses:</b> {m}m {s}s"
 
+    # Extra info lines
+    channel_str = f"\n👤 <b>Channel:</b> {channel}" if channel else ""
+    url_str = f"\n🔗 <a href=\"{video_url}\">Buka video YouTube</a>" if video_url else ""
+    folder_str = f"\n📂 <b>Folder:</b> <code>{output_folder}</code>" if output_folder else ""
     drive_str = "\n☁️ Di-upload ke Google Drive ✓" if drive_uploaded else ""
 
     text = (
         f"✅ <b>YT Short Clipper — Selesai!</b>\n"
         f"━━━━━━━━━━━━━━━━\n"
-        f"📹 <b>Video:</b> {video_title}\n"
-        f"🎬 <b>{n} clip berhasil dibuat:</b>\n"
-        f"{clips_text}"
+        f"📹 <b>{video_title}</b>"
+        f"{channel_str}"
+        f"{url_str}\n"
+        f"━━━━━━━━━━━━━━━━\n"
+        f"🎬 <b>{n} clip berhasil dibuat:</b>"
+        f"{clips_text}\n"
+        f"━━━━━━━━━━━━━━━━"
+        f"{folder_str}"
         f"{drive_str}"
         f"{duration_str}\n"
-        f"━━━━━━━━━━━━━━━━\n"
         f"<i>{datetime.now().strftime('%d %b %Y %H:%M')}</i>"
     )
 

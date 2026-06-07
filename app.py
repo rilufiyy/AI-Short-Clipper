@@ -1775,8 +1775,12 @@ class YTShortClipperApp(ctk.CTk):
                 video_info = (self.session_data or {}).get("video_info", {})
                 drive_ok = self.config.get("gdrive", {}).get("enabled", False)
                 start = getattr(self, '_processing_start_time', None)
+                session_dir = (self.session_data or {}).get("session_dir", "")
+                import os as _os
+                folder_name = _os.path.basename(session_dir) if session_dir else ""
                 notify_clips_complete(cfg, highlights, video_info,
-                                      drive_uploaded=drive_ok, start_time=start)
+                                      drive_uploaded=drive_ok, start_time=start,
+                                      output_folder=folder_name)
             except Exception as e:
                 debug_log(f"[Telegram] notification error: {e}")
 

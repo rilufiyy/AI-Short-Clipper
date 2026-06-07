@@ -1085,8 +1085,20 @@ class YTShortClipperApp(ctk.CTk):
                     try:
                         hf_models = hf_client.models.list()
                         hf_available = [m.id for m in hf_models.data]
-                        
-                        if hf_model not in hf_available:
+
+                        # Use flexible match: exact, suffix (Gemini returns "models/gemini-2.5-flash"),
+                        # or prefix substring — so any provider format works
+                        def _model_match(configured, available_list):
+                            for a in available_list:
+                                if configured == a:
+                                    return True
+                                if a.endswith("/" + configured):
+                                    return True
+                                if configured.endswith("/" + a):
+                                    return True
+                            return False
+
+                        if hf_available and not _model_match(hf_model, hf_available):
                             self.after(0, lambda: self._on_validation_failed(
                                 f"Highlight Finder model '{hf_model}' is not available!\n\n" +
                                 "Please check your configuration in:\n" +
@@ -1095,7 +1107,6 @@ class YTShortClipperApp(ctk.CTk):
                     except Exception as list_error:
                         # If models.list() fails, the API key might still be valid
                         # Some providers don't support models.list()
-                        # Just verify the API key is not empty and continue
                         pass
                     
                 except Exception as e:

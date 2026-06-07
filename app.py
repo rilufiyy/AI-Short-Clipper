@@ -27,6 +27,7 @@ from dialogs.model_selector import SearchableModelDropdown
 from dialogs.youtube_upload import YouTubeUploadDialog
 from dialogs.terms_of_service import TermsOfServiceDialog
 from dialogs.autoklip_promo import AutoKlipPromoDialog
+from dialogs.api_setup import APISetupDialog
 from components.progress_step import ProgressStep
 from pages.settings_page import SettingsPage
 from pages.browse_page import BrowsePage
@@ -134,13 +135,27 @@ class YTShortClipperApp(ctk.CTk):
     def _maybe_show_autoklip_promo(self):
         """Show AutoKlip promo modal exactly once per install."""
         if self.config.get("autoklip_promo_shown", False):
+            self.after(200, self._maybe_show_api_setup)
             return
         try:
-            AutoKlipPromoDialog(self)
+            AutoKlipPromoDialog(self, on_close_callback=lambda: self.after(200, self._maybe_show_api_setup))
         finally:
             # Persist immediately so it never shows again, even if user
             # closes the app without clicking the CTA.
             self.config.set("autoklip_promo_shown", True)
+
+    def _maybe_show_api_setup(self):
+        """Show first-run API key dialog if highlight_finder key is not set."""
+        key = (
+            self.config.config
+            .get("ai_providers", {})
+            .get("highlight_finder", {})
+            .get("api_key", "")
+            .strip()
+        )
+        if key:
+            return
+        APISetupDialog(self, self.config)
     
     def set_app_icon(self):
         """Set window icon"""

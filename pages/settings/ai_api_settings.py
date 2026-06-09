@@ -30,33 +30,47 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
 
         ctk.CTkLabel(
             qs_inner,
-            text="Masukkan 1 API key → otomatis dikonfigurasi ke semua provider yang kompatibel.",
+            text="Masukkan API key → provider terdeteksi otomatis, atau pilih manual.",
             font=ctk.CTkFont(size=10),
             text_color="gray",
             anchor="w",
         ).pack(fill="x", pady=(0, 8))
 
+        # Row 1: key input
         input_row = ctk.CTkFrame(qs_inner, fg_color="transparent")
-        input_row.pack(fill="x")
+        input_row.pack(fill="x", pady=(0, 6))
 
         self._qs_entry = ctk.CTkEntry(
             input_row,
-            placeholder_text="Tempel API key (AIza… untuk Gemini, sk-… untuk OpenAI)…",
+            placeholder_text="Tempel API key di sini…",
             show="•",
             font=ctk.CTkFont(size=11),
             height=36,
         )
-        self._qs_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
+        self._qs_entry.pack(fill="x")
         self._qs_entry.bind("<KeyRelease>", self._qs_on_type)
 
-        self._qs_apply_btn = ctk.CTkButton(
-            input_row,
-            text="Apply ke Semua",
-            width=130, height=36,
+        # Row 2: provider selector + apply button
+        action_row = ctk.CTkFrame(qs_inner, fg_color="transparent")
+        action_row.pack(fill="x")
+
+        self._qs_provider_var = ctk.StringVar(value="Auto")
+        self._qs_seg = ctk.CTkSegmentedButton(
+            action_row,
+            values=["Auto", "Gemini", "OpenAI"],
+            variable=self._qs_provider_var,
+            font=ctk.CTkFont(size=10),
+            height=34,
+        )
+        self._qs_seg.pack(side="left", padx=(0, 6))
+
+        ctk.CTkButton(
+            action_row,
+            text="Apply ke Semua  ✓",
+            height=34,
             font=ctk.CTkFont(size=11, weight="bold"),
             command=self._qs_apply,
-        )
-        self._qs_apply_btn.pack(side="left")
+        ).pack(side="left", fill="x", expand=True)
 
         self._qs_status = ctk.CTkLabel(
             qs_inner, text="",
@@ -64,28 +78,6 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
             anchor="w",
         )
         self._qs_status.pack(fill="x", pady=(4, 0))
-
-        # Manual provider selector (shown only when key format is unknown)
-        self._qs_manual_frame = ctk.CTkFrame(qs_inner, fg_color="transparent")
-        ctk.CTkButton(
-            self._qs_manual_frame,
-            text="Apply sebagai Gemini",
-            height=30, font=ctk.CTkFont(size=10),
-            fg_color=("#2a6fab", "#1e5a8a"),
-            hover_color=("#1e5a8a", "#174a72"),
-            command=lambda: self._qs_apply(force_provider="gemini"),
-        ).pack(side="left", padx=(0, 6))
-        ctk.CTkButton(
-            self._qs_manual_frame,
-            text="Apply sebagai OpenAI",
-            height=30, font=ctk.CTkFont(size=10),
-            fg_color=("#555", "#444"),
-            hover_color=("#666", "#555"),
-            command=lambda: self._qs_apply(force_provider="openai"),
-        ).pack(side="left")
-        # Register in geometry manager first, then hide
-        self._qs_manual_frame.pack(fill="x", pady=(4, 0))
-        self._qs_manual_frame.pack_forget()
 
         # ── AI Providers Section ───────────────────────────────────────────
         providers_section = self.create_section("AI Providers")
@@ -161,49 +153,51 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
         key = self._qs_entry.get().strip()
         if len(key) < 4:
             self._qs_status.configure(text="", text_color="gray")
-            self._qs_manual_frame.pack_forget()
             return
         provider = detect_provider(key)
         if provider == "gemini":
-            self._qs_status.configure(text="✓ Gemini Free Tier terdeteksi — apply otomatis", text_color="#2a8a4a")
-            self._qs_manual_frame.pack_forget()
+            self._qs_status.configure(text="✓ Gemini terdeteksi", text_color="#2a8a4a")
+            self._qs_provider_var.set("Gemini")
         elif provider == "openai":
-            self._qs_status.configure(text="✓ OpenAI terdeteksi — apply otomatis", text_color="#3a8fd1")
-            self._qs_manual_frame.pack_forget()
+            self._qs_status.configure(text="✓ OpenAI terdeteksi", text_color="#3a8fd1")
+            self._qs_provider_var.set("OpenAI")
         else:
-            self._qs_status.configure(text="Format tidak dikenali — pilih provider manual:", text_color="orange")
-            self._qs_manual_frame.pack(fill="x", pady=(4, 0))
+            self._qs_status.configure(text="Format tidak dikenali — pilih provider di atas lalu Apply", text_color="orange")
+            self._qs_provider_var.set("Auto")
 
-    def _qs_apply(self, force_provider: str = None):
-        from utils.gemini_client import get_provider_configs, detect_provider
+    def _qs_apply(self):
+        from utils.gemini_client import get_provider_configs, detect_provider, GEMINI_API_BASE
         key = self._qs_entry.get().strip()
         if not key or len(key) < 10:
             self._qs_status.configure(text="API key tidak valid.", text_color="#e05555")
             return
 
-        provider = force_provider or detect_provider(key)
+        seg_val = self._qs_provider_var.get()
+        if seg_val == "Gemini":
+            provider = "gemini"
+        elif seg_val == "OpenAI":
+            provider = "openai"
+        else:
+            provider = detect_provider(key)
+
         if provider == "unknown":
-            self._qs_status.configure(text="Pilih provider di bawah dulu.", text_color="orange")
+            self._qs_status.configure(text="Pilih Gemini atau OpenAI di segmented button dulu.", text_color="orange")
             return
 
-        configs = get_provider_configs(key) if provider != "unknown" else {}
-        if force_provider:
-            # Override detection — rebuild configs with forced provider
-            from utils.gemini_client import GEMINI_API_BASE
-            if force_provider == "gemini":
-                configs = {
-                    "highlight_finder": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
-                    "youtube_title_maker": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
-                    "caption_maker": {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-2.5-flash"},
-                    "hook_maker": {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-3.1-flash-tts-preview"},
-                }
-            else:
-                configs = {
-                    "highlight_finder": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
-                    "youtube_title_maker": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
-                    "caption_maker": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "whisper-1"},
-                    "hook_maker": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "tts-1"},
-                }
+        if provider == "gemini":
+            configs = {
+                "highlight_finder":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
+                "youtube_title_maker": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
+                "caption_maker":       {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-2.5-flash"},
+                "hook_maker":          {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-3.1-flash-tts-preview"},
+            }
+        else:
+            configs = {
+                "highlight_finder":    {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
+                "youtube_title_maker": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
+                "caption_maker":       {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "whisper-1"},
+                "hook_maker":          {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "tts-1"},
+            }
 
         providers = self.config.setdefault("ai_providers", {})
         for pkey, pval in configs.items():
@@ -216,12 +210,9 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
             self._update_status(pk)
 
         name = "Gemini" if provider == "gemini" else "OpenAI"
-        self._qs_status.configure(
-            text=f"✓ Semua provider dikonfigurasi dengan {name}!",
-            text_color="#2a8a4a",
-        )
-        self._qs_manual_frame.pack_forget()
+        self._qs_status.configure(text=f"✓ Semua provider dikonfigurasi dengan {name}!", text_color="#2a8a4a")
         self._qs_entry.delete(0, "end")
+        self._qs_provider_var.set("Auto")
 
     def navigate_to_provider(self, key):
         """Navigate to provider settings page"""

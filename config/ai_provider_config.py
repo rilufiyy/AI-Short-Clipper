@@ -118,14 +118,14 @@ SPECIALIZED_MODELS = {
     },
     "caption_maker": {
         "ytclip": ["whisper-1"],
-        "openai": ["whisper-1"],  # Special case for whisper
-        "google": [],  # Gemini doesn't have whisper equivalent
+        "openai": ["whisper-1"],
+        "google": ["gemini-2.5-flash", "gemini-2.0-flash"],  # Gemini native STT
         "groq": [],
     },
     "hook_maker": {
         "ytclip": ["tts-1-hd", "tts-1"],
-        "openai": ["tts-1-hd", "tts-1"],  # TTS models
-        "google": [],  # Gemini doesn't have TTS built-in
+        "openai": ["tts-1-hd", "tts-1"],
+        "google": ["gemini-3.1-flash-tts-preview"],  # Gemini native TTS
         "anthropic": [],
     },
     "youtube_title_maker": {

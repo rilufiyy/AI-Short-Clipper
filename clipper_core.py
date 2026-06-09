@@ -120,21 +120,36 @@ class AutoClipperCore:
             )
             self.model = hf_config.get("model", model)
             
-            # Caption Maker client (Whisper) — use longer timeout for large audio uploads
+            # Caption Maker client (Whisper / Gemini STT)
             cm_config = self.ai_providers.get("caption_maker", {})
-            self.caption_client = OpenAI(
-                api_key=cm_config.get("api_key", ""),
-                base_url=cm_config.get("base_url", "https://api.openai.com/v1"),
-                timeout=600.0  # 10 minutes for large audio files
-            )
+            cm_base = cm_config.get("base_url", "https://api.openai.com/v1")
+            self.gemini_stt_key = None
+            from utils.gemini_client import is_gemini_native
+            if is_gemini_native(cm_base):
+                # Gemini native STT — no OpenAI client needed
+                self.gemini_stt_key = cm_config.get("api_key", "")
+                self.caption_client = None
+            else:
+                self.caption_client = OpenAI(
+                    api_key=cm_config.get("api_key", ""),
+                    base_url=cm_base,
+                    timeout=600.0  # 10 minutes for large audio files
+                )
             self.whisper_model = cm_config.get("model", "whisper-1")
-            
-            # Hook Maker client (TTS)
+
+            # Hook Maker client (TTS / Gemini TTS)
             hm_config = self.ai_providers.get("hook_maker", {})
-            self.tts_client = OpenAI(
-                api_key=hm_config.get("api_key", ""),
-                base_url=hm_config.get("base_url", "https://api.openai.com/v1")
-            )
+            hm_base = hm_config.get("base_url", "https://api.openai.com/v1")
+            self.gemini_tts_key = None
+            if is_gemini_native(hm_base):
+                # Gemini native TTS — no OpenAI client needed
+                self.gemini_tts_key = hm_config.get("api_key", "")
+                self.tts_client = None
+            else:
+                self.tts_client = OpenAI(
+                    api_key=hm_config.get("api_key", ""),
+                    base_url=hm_base,
+                )
             self.tts_model = hm_config.get("model", tts_model)
         else:
             # Fallback to single client (backward compatibility)
@@ -2125,20 +2140,44 @@ Transcript:
         return transcript
     
     def _whisper_transcribe_file(self, audio_path: str, time_offset: float = 0) -> list:
-        """Transcribe a single audio file with Whisper API.
-        
+        """Transcribe a single audio file with Whisper API or Gemini STT.
+
         Uses raw httpx POST instead of OpenAI SDK for better proxy compatibility.
-        
+
         Args:
             audio_path: Path to audio file
             time_offset: Offset in seconds to add to all timestamps (for chunked files)
-        
+
         Returns:
             list of dicts with 'start', 'end', 'text' keys
         """
+        # ── Gemini STT branch ──────────────────────────────────────────────
+        if self.gemini_stt_key:
+            from utils.gemini_client import transcribe_audio as _gemini_stt
+            file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+            self.log(f"    Sending {file_size_mb:.1f}MB to Gemini STT ({self.whisper_model})...")
+            try:
+                segments, _ = _gemini_stt(
+                    self.gemini_stt_key, audio_path,
+                    language=getattr(self, "subtitle_language", "id"),
+                    model=self.whisper_model,
+                )
+                return [
+                    {
+                        "start": seg.get("start", 0) + time_offset,
+                        "end": seg.get("end", 0) + time_offset,
+                        "text": seg.get("text", "").strip(),
+                    }
+                    for seg in segments
+                ]
+            except Exception as e:
+                self.log(f"  ❌ Gemini STT error: {e}")
+                raise Exception(f"Gemini transcription failed:\n{e}")
+        # ── end Gemini STT ─────────────────────────────────────────────────
+
         import time as _time
         import requests as _requests
-        
+
         file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
         base_url = str(self.caption_client.base_url).rstrip("/")
         api_key = self.caption_client.api_key
@@ -2240,8 +2279,34 @@ Transcript:
         SDK response shape consumed by ``create_ass_subtitle_capcut``), or
         raises on failure.
         """
-        import requests as _requests
         from types import SimpleNamespace
+
+        # ── Gemini STT branch ──────────────────────────────────────────────
+        if self.gemini_stt_key:
+            from utils.gemini_client import transcribe_audio as _gemini_stt
+            file_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
+            self.log(f"  [Caption] Sending {file_size_mb:.2f}MB to Gemini STT ({self.whisper_model})...")
+            try:
+                segments, words = _gemini_stt(
+                    self.gemini_stt_key, audio_path,
+                    language=getattr(self, "subtitle_language", "id"),
+                    model=self.whisper_model,
+                )
+                ns_words = [
+                    SimpleNamespace(start=w.get("start", 0), end=w.get("end", 0), word=w.get("word", ""))
+                    for w in words
+                ]
+                ns_segments = [
+                    SimpleNamespace(start=s.get("start", 0), end=s.get("end", 0), text=s.get("text", ""))
+                    for s in segments
+                ]
+                return SimpleNamespace(words=ns_words, segments=ns_segments)
+            except Exception as e:
+                self.log(f"  ❌ Gemini STT error: {e}")
+                raise Exception(f"Gemini transcription failed:\n{e}")
+        # ── end Gemini STT ─────────────────────────────────────────────────
+
+        import requests as _requests
 
         base_url = str(self.caption_client.base_url).rstrip("/")
         api_key = self.caption_client.api_key
@@ -3431,37 +3496,53 @@ Transcript:
         self.report_tokens(0, 0, 0, len(hook_text))
         
         # Generate TTS audio
-        try:
-            tts_response = self.tts_client.audio.speech.create(
-                model=self.tts_model,
-                voice="nova",
-                input=hook_text,
-                speed=1.0
-            )
-        except APIConnectionError as e:
-            self.log(f"  ❌ TTS API Connection Error: Could not connect to {self.tts_client.base_url}")
-            raise Exception(f"TTS API connection failed!\n\nCould not connect to: {self.tts_client.base_url}\nError: {e}")
-        except RateLimitError as e:
-            self.log(f"  ❌ TTS API Rate Limit: {e}")
-            raise Exception(f"TTS API rate limit exceeded!\n\nPlease wait a moment and try again.\nDetails: {e}")
-        except APIStatusError as e:
-            self.log(f"  ❌ TTS API Error (HTTP {e.status_code}): {e.message}")
-            self.log(f"     Model: {self.tts_model}, Base URL: {self.tts_client.base_url}")
-            raise Exception(
-                f"TTS (Hook) API Error!\n\n"
-                f"Status: {e.status_code}\n"
-                f"Message: {e.message}\n"
-                f"Model: {self.tts_model}\n"
-                f"Base URL: {self.tts_client.base_url}\n\n"
-                f"Check your Hook Maker API settings."
-            )
-        except Exception as e:
-            self.log(f"  ❌ TTS API Unexpected Error: {type(e).__name__}: {e}")
-            raise Exception(f"TTS (Hook) generation failed!\n\nError: {type(e).__name__}: {e}\nModel: {self.tts_model}")
-        
-        tts_file = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False).name
-        with open(tts_file, 'wb') as f:
-            f.write(tts_response.content)
+        if self.gemini_tts_key:
+            # ── Gemini TTS ────────────────────────────────────────────────
+            from utils.gemini_client import text_to_speech as _gemini_tts
+            try:
+                wav_bytes = _gemini_tts(
+                    self.gemini_tts_key, hook_text,
+                    voice="nova", model=self.tts_model,
+                )
+            except Exception as e:
+                self.log(f"  ❌ Gemini TTS error: {e}")
+                raise Exception(f"Gemini TTS failed!\n\nError: {e}\nModel: {self.tts_model}")
+            tts_file = tempfile.NamedTemporaryFile(suffix='.wav', delete=False).name
+            with open(tts_file, 'wb') as f:
+                f.write(wav_bytes)
+        else:
+            # ── OpenAI TTS ────────────────────────────────────────────────
+            try:
+                tts_response = self.tts_client.audio.speech.create(
+                    model=self.tts_model,
+                    voice="nova",
+                    input=hook_text,
+                    speed=1.0
+                )
+            except APIConnectionError as e:
+                self.log(f"  ❌ TTS API Connection Error: Could not connect to {self.tts_client.base_url}")
+                raise Exception(f"TTS API connection failed!\n\nCould not connect to: {self.tts_client.base_url}\nError: {e}")
+            except RateLimitError as e:
+                self.log(f"  ❌ TTS API Rate Limit: {e}")
+                raise Exception(f"TTS API rate limit exceeded!\n\nPlease wait a moment and try again.\nDetails: {e}")
+            except APIStatusError as e:
+                self.log(f"  ❌ TTS API Error (HTTP {e.status_code}): {e.message}")
+                self.log(f"     Model: {self.tts_model}, Base URL: {self.tts_client.base_url}")
+                raise Exception(
+                    f"TTS (Hook) API Error!\n\n"
+                    f"Status: {e.status_code}\n"
+                    f"Message: {e.message}\n"
+                    f"Model: {self.tts_model}\n"
+                    f"Base URL: {self.tts_client.base_url}\n\n"
+                    f"Check your Hook Maker API settings."
+                )
+            except Exception as e:
+                self.log(f"  ❌ TTS API Unexpected Error: {type(e).__name__}: {e}")
+                raise Exception(f"TTS (Hook) generation failed!\n\nError: {type(e).__name__}: {e}\nModel: {self.tts_model}")
+
+            tts_file = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False).name
+            with open(tts_file, 'wb') as f:
+                f.write(tts_response.content)
         
         # Get TTS duration using ffprobe
         probe_cmd = [

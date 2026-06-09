@@ -1793,9 +1793,10 @@ class YTShortClipperApp(ctk.CTk):
                 session_dir = (self.session_data or {}).get("session_dir", "")
                 import os as _os
                 folder_name = _os.path.basename(session_dir) if session_dir else ""
-                notify_clips_complete(cfg, highlights, video_info,
-                                      drive_uploaded=drive_ok, start_time=start,
-                                      output_folder=folder_name)
+                ok = notify_clips_complete(cfg, highlights, video_info,
+                                          drive_uploaded=drive_ok, start_time=start,
+                                          output_folder=folder_name)
+                debug_log(f"[Telegram] notification {'sent ✓' if ok else 'failed (check bot_token/chat_id)'}")
             except Exception as e:
                 debug_log(f"[Telegram] notification error: {e}")
 

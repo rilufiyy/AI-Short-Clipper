@@ -83,7 +83,9 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
             hover_color=("#666", "#555"),
             command=lambda: self._qs_apply(force_provider="openai"),
         ).pack(side="left")
-        # Hidden by default — shown when format unknown
+        # Register in geometry manager first, then hide
+        self._qs_manual_frame.pack(fill="x", pady=(4, 0))
+        self._qs_manual_frame.pack_forget()
 
         # ── AI Providers Section ───────────────────────────────────────────
         providers_section = self.create_section("AI Providers")

@@ -39,8 +39,8 @@ def detect_provider(api_key: str) -> str:
     # OpenAI-family — very distinctive prefix
     if key.startswith("sk-") or key.startswith("ytc-"):
         return "openai"
-    # Google AI Studio keys
-    if key.startswith("AIza"):
+    # Google AI Studio keys — older format (AIza) and newer format (AQ.)
+    if key.startswith("AIza") or key.startswith("AQ."):
         return "gemini"
     # Unknown — caller should ask user to pick manually
     return "unknown"

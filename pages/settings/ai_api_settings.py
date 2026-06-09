@@ -166,7 +166,7 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
             self._qs_provider_var.set("Auto")
 
     def _qs_apply(self):
-        from utils.gemini_client import get_provider_configs, detect_provider, GEMINI_API_BASE
+        from utils.gemini_client import detect_provider, GEMINI_API_BASE
         key = self._qs_entry.get().strip()
         if not key or len(key) < 10:
             self._qs_status.configure(text="API key tidak valid.", text_color="#e05555")
@@ -185,26 +185,28 @@ class AIAPISettingsSubPage(BaseSettingsSubPage):
             return
 
         if provider == "gemini":
-            configs = {
+            new_providers = {
                 "highlight_finder":    {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
                 "youtube_title_maker": {"base_url": "https://generativelanguage.googleapis.com/v1beta/openai/", "api_key": key, "model": "gemini-2.5-flash"},
                 "caption_maker":       {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-2.5-flash"},
                 "hook_maker":          {"base_url": GEMINI_API_BASE, "api_key": key, "model": "gemini-3.1-flash-tts-preview"},
             }
         else:
-            configs = {
+            new_providers = {
                 "highlight_finder":    {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
                 "youtube_title_maker": {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "gpt-4.1"},
                 "caption_maker":       {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "whisper-1"},
                 "hook_maker":          {"base_url": "https://api.openai.com/v1", "api_key": key, "model": "tts-1"},
             }
 
-        providers = self.config.setdefault("ai_providers", {})
-        for pkey, pval in configs.items():
-            providers.setdefault(pkey, {}).update(pval)
+        # ConfigManager wraps the real dict in .config; plain dict works directly
+        raw_cfg = self.config.config if hasattr(self.config, 'config') else self.config
+        existing = raw_cfg.setdefault("ai_providers", {})
+        for pkey, pval in new_providers.items():
+            existing.setdefault(pkey, {}).update(pval)
 
         if self.on_save_callback:
-            self.on_save_callback(self.config)
+            self.on_save_callback(raw_cfg)
 
         for pk in ("highlight_finder", "caption_maker", "hook_maker", "youtube_title_maker"):
             self._update_status(pk)

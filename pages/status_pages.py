@@ -189,43 +189,64 @@ class APIStatusPage(ctk.CTkFrame):
                     ))
                     continue
                 
+                def _model_match(configured, available):
+                    for a in available:
+                        if configured == a: return True
+                        if a.endswith("/" + configured): return True
+                        if configured.endswith("/" + a): return True
+                    return False
+
                 try:
-                    client = OpenAI(api_key=api_key, base_url=base_url)
+                    from utils.gemini_client import is_gemini_native
+                    if is_gemini_native(base_url):
+                        # Gemini native endpoint — auth is ?key= not Bearer
+                        import urllib.request as _ureq, urllib.error as _uerr, json as _json
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+                        try:
+                            with _ureq.urlopen(_ureq.Request(url), timeout=10) as resp:
+                                data = _json.loads(resp.read().decode("utf-8"))
+                            available_models = [
+                                m.get("name", "").split("/")[-1]
+                                for m in data.get("models", [])
+                            ]
+                            if _model_match(model, available_models):
+                                self.after(0, lambda sl=status_label, il=info_label, m=model: (
+                                    sl.configure(text="✓ Connected", text_color="green"),
+                                    il.configure(text=f"Model: {m}")
+                                ))
+                            else:
+                                self.after(0, lambda sl=status_label, il=info_label, m=model: (
+                                    sl.configure(text="⚠ Model not found", text_color="orange"),
+                                    il.configure(text=f"Model: {m}")
+                                ))
+                        except _uerr.HTTPError as he:
+                            body = he.read().decode("utf-8", errors="ignore")[:60]
+                            raise Exception(f"Error code: {he.code} - {body}")
+                    else:
+                        client = OpenAI(api_key=api_key, base_url=base_url)
+                        try:
+                            models_response = client.models.list()
+                            available_models = [m.id for m in models_response.data]
+                            if _model_match(model, available_models):
+                                self.after(0, lambda sl=status_label, il=info_label, m=model: (
+                                    sl.configure(text="✓ Connected", text_color="green"),
+                                    il.configure(text=f"Model: {m}")
+                                ))
+                            else:
+                                self.after(0, lambda sl=status_label, il=info_label, m=model: (
+                                    sl.configure(text="⚠ Model not found", text_color="orange"),
+                                    il.configure(text=f"Model: {m}")
+                                ))
+                        except Exception as list_error:
+                            error_str = str(list_error).lower()
+                            if any(x in error_str for x in ['connection', 'timeout', 'unreachable', 'invalid', 'unauthorized', 'authentication', 'api key', 'not found', '404', '401', '403', '500', '502', '503', 'error code']):
+                                raise list_error
+                            else:
+                                self.after(0, lambda sl=status_label, il=info_label, m=model: (
+                                    sl.configure(text="✓ Configured", text_color="green"),
+                                    il.configure(text=f"Model: {m}")
+                                ))
 
-                    try:
-                        models_response = client.models.list()
-                        available_models = [m.id for m in models_response.data]
-
-                        def _model_match(configured, available):
-                            for a in available:
-                                if configured == a:
-                                    return True
-                                if a.endswith("/" + configured):
-                                    return True
-                                if configured.endswith("/" + a):
-                                    return True
-                            return False
-
-                        if _model_match(model, available_models):
-                            self.after(0, lambda sl=status_label, il=info_label, m=model: (
-                                sl.configure(text="✓ Connected", text_color="green"),
-                                il.configure(text=f"Model: {m}")
-                            ))
-                        else:
-                            self.after(0, lambda sl=status_label, il=info_label, m=model: (
-                                sl.configure(text="⚠ Model not found", text_color="orange"),
-                                il.configure(text=f"Model: {m}")
-                            ))
-                    except Exception as list_error:
-                        error_str = str(list_error).lower()
-                        if any(x in error_str for x in ['connection', 'timeout', 'unreachable', 'invalid', 'unauthorized', 'authentication', 'api key', 'not found', '404', '401', '403', '500', '502', '503', 'error code']):
-                            raise list_error
-                        else:
-                            self.after(0, lambda sl=status_label, il=info_label, m=model: (
-                                sl.configure(text="✓ Configured", text_color="green"),
-                                il.configure(text=f"Model: {m}")
-                            ))
-                    
                 except Exception as e:
                     error_msg = str(e)[:40]
                     self.after(0, lambda sl=status_label, il=info_label, err=error_msg: (

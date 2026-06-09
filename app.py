@@ -1071,6 +1071,15 @@ class YTShortClipperApp(ctk.CTk):
             self.update_start_button_state()
 
     def start_processing(self):
+        # Check daily generation quota before anything else
+        from utils.usage_tracker import check_quota
+        max_uses  = self.config.get("daily_quota", {}).get("max_uses", 2)
+        reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
+        allowed, quota_msg = check_quota(max_uses=max_uses, reset_hour=reset_hour)
+        if not allowed:
+            messagebox.showwarning("Kuota Harian Habis", quota_msg)
+            return
+
         # Disable button during validation
         self.start_btn.configure(state="disabled", text="Validating...")
         
@@ -1766,6 +1775,11 @@ class YTShortClipperApp(ctk.CTk):
     
     def on_complete(self):
         self.processing = False
+        from utils.usage_tracker import increment, get_status_text
+        increment()
+        max_uses   = self.config.get("daily_quota", {}).get("max_uses", 2)
+        reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
+        debug_log(f"[Quota] {get_status_text(max_uses, reset_hour)}")
         self.pages["processing"].on_complete()
         
         # Reset back button to default (processing page)
@@ -1777,6 +1791,11 @@ class YTShortClipperApp(ctk.CTk):
     def on_clipping_complete(self):
         """Called when clipping completes successfully"""
         self.processing = False
+        from utils.usage_tracker import increment, get_status_text
+        increment()
+        max_uses   = self.config.get("daily_quota", {}).get("max_uses", 2)
+        reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
+        debug_log(f"[Quota] {get_status_text(max_uses, reset_hour)}")
         self.pages["clipping"].on_complete()
 
         # Telegram notification (background, non-blocking)

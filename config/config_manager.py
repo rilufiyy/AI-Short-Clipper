@@ -95,6 +95,13 @@ class ConfigManager:
                         "chat_id": ""
                     }
 
+                # Add daily quota settings if not exists
+                if "daily_quota" not in config:
+                    config["daily_quota"] = {
+                        "max_uses": 2,
+                        "reset_hour": 0
+                    }
+
                 return config
         
         # Default config with system prompt

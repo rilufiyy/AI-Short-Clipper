@@ -5,13 +5,13 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-lightgrey)]()
 
-🎬 **Automated YouTube to Short-Form Content Pipeline**
+**Automated YouTube to Short-Form Content Pipeline**
 
 Transform long-form YouTube videos (podcasts, interviews, vlogs) into engaging short-form content for TikTok, Instagram Reels, and YouTube Shorts — powered by AI.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### For Users (Non-Technical)
 
@@ -24,8 +24,8 @@ Download the desktop app for your platform:
 
 Then follow the complete setup guide:
 
-- 📖 **[English Guide](GUIDE.md)** - Complete setup guide with screenshots
-- 📖 **[Panduan Indonesia](PANDUAN.md)** - Panduan lengkap dengan screenshot
+- **[English Guide](GUIDE.md)** - Complete setup guide with screenshots
+- **[Panduan Indonesia](PANDUAN.md)** - Panduan lengkap dengan screenshot
 
 **What you'll learn:**
 1. How to download and run the app
@@ -42,23 +42,23 @@ If you want to contribute or run from source:
 2. See [Contributing](#-contributing) for contribution guidelines
 3. See [Building from Source](#-building-from-source) for packaging the app
 
-## ✨ Features
+## Features
 
-- **🎥 Auto Download** - Downloads YouTube videos with subtitles using yt-dlp
-- **🔍 AI Highlight Detection** - Uses GPT-4 to identify the most engaging segments (60-120 seconds)
-- **✂️ Smart Clipping** - Automatically cuts video at optimal timestamps
-- **📱 Portrait Conversion** - Converts landscape (16:9) to portrait (9:16) with intelligent speaker tracking
-- **🎯 Face Detection** - Two modes available:
+- **Auto Download** - Downloads YouTube videos with subtitles using yt-dlp
+- **AI Highlight Detection** - Uses GPT-4 to identify the most engaging segments (60-120 seconds)
+- **Smart Clipping** - Automatically cuts video at optimal timestamps
+- **Portrait Conversion** - Converts landscape (16:9) to portrait (9:16) with intelligent speaker tracking
+- **Face Detection** - Two modes available:
   - **OpenCV (Fast)** - Crops to largest face, faster processing
   - **MediaPipe (Smart)** - Tracks active speaker via lip movement detection, more accurate but 2-3x slower
-- **🪝 Hook Generation** - Creates attention-grabbing intro scenes with AI-generated text and TTS voiceover
-- **📝 Auto Captions** - Adds CapCut-style word-by-word highlighted captions using Whisper
-- **🖼️ Watermark Support** - Add custom watermark with adjustable position, size, and opacity
-- **📊 SEO Metadata** - Generates optimized titles and descriptions for each clip
-- **🖥️ Cross-Platform** - Runs on Windows and macOS (Apple Silicon + Intel)
-- **⚡ GPU Acceleration** - NVENC (NVIDIA), AMF (AMD), QSV (Intel), VideoToolbox (macOS)
+- **Hook Generation** - Creates attention-grabbing intro scenes with AI-generated text and TTS voiceover
+- **Auto Captions** - Adds CapCut-style word-by-word highlighted captions using Whisper
+- **Watermark Support** - Add custom watermark with adjustable position, size, and opacity
+- **SEO Metadata** - Generates optimized titles and descriptions for each clip
+- **Cross-Platform** - Runs on Windows and macOS (Apple Silicon + Intel)
+- **GPU Acceleration** - NVENC (NVIDIA), AMF (AMD), QSV (Intel), VideoToolbox (macOS)
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -101,7 +101,7 @@ If you want to contribute or run from source:
 
 ---
 
-## 📋 Requirements (For Development)
+## Requirements (For Development)
 
 ### System Dependencies
 
@@ -146,7 +146,7 @@ See [GUIDE.md](GUIDE.md) or [PANDUAN.md](PANDUAN.md) for detailed API setup inst
 
 ---
 
-## 🚀 Installation (For Development)
+## Installation (For Development)
 
 > **Note:** This section is for developers who want to run the app from source code. If you're a regular user, please follow the [User Guide](GUIDE.md) or [Panduan Indonesia](PANDUAN.md) instead.
 
@@ -192,7 +192,7 @@ The app will create a `config.json` file on first run where you can save your AI
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 yt-short-clipper/
@@ -307,7 +307,7 @@ Each clip folder contains a `data.json` file with enriched metadata:
 
 ---
 
-## ☁️ Google Drive Auto-Upload (Optional)
+## Google Drive Auto-Upload (Optional)
 
 After processing, clips can be automatically saved to a Google Drive folder.
 
@@ -351,7 +351,7 @@ Every time you process a video, the app creates a **session folder** named after
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 All settings can be configured through the GUI Settings page (⚙️ button in the app).
 
@@ -395,7 +395,7 @@ For complete setup instructions with screenshots, see:
 
 ---
 
-## 🔧 How It Works
+## How It Works
 
 ### 1. Video Download
 - Uses yt-dlp to download video in best quality (max 1080p)
@@ -439,7 +439,7 @@ For complete setup instructions with screenshots, see:
 
 ---
 
-## 🎨 Caption Styling
+## Caption Styling
 
 The captions use CapCut-style formatting:
 
@@ -455,7 +455,7 @@ Position: Lower third (400px from bottom)
 
 ---
 
-## 💰 API Usage & Costs
+## API Usage & Costs
 
 Estimated OpenAI API costs per video (5 clips):
 
@@ -471,7 +471,7 @@ The desktop app shows real-time token usage and cost estimation during processin
 
 ---
 
-## 🔨 Building from Source
+## Building from Source
 
 ### Windows
 
@@ -513,7 +513,7 @@ create-dmg \
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! We greatly appreciate contributions from anyone.
 
@@ -546,27 +546,27 @@ git push origin feature/your-new-feature
 
 | Type | Description |
 |-------|-----------|
-| 🐛 **Bug Report** | Report bugs in the [Issues](../../issues) tab |
-| 💡 **Feature Request** | Request new features in [Issues](../../issues) |
-| 📖 **Documentation** | Improve docs, fix typos, add examples |
-| 🔧 **Code** | Fix bugs, add features, improve performance |
+| **Bug Report** | Report bugs in the [Issues](../../issues) tab |
+| **Feature Request** | Request new features in [Issues](../../issues) |
+| **Documentation** | Improve docs, fix typos, add examples |
+| **Code** | Fix bugs, add features, improve performance |
 
-📚 **Complete guide available in [CONTRIBUTING.md](CONTRIBUTING.md)** - includes Git tutorial for beginners!
+**Complete guide available in [CONTRIBUTING.md](CONTRIBUTING.md)** - includes Git tutorial for beginners!
 
 ---
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 - This tool is for personal/educational use only
 - Respect YouTube's Terms of Service
 - Ensure you have rights to use the content you're processing
 - The AI-generated content should be reviewed before publishing
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) - YouTube downloading
 - [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition
@@ -577,13 +577,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 👨‍💻 Credits
+## Credits
 
-Made with ☕ by **Aji Prakoso** for content creators
+Made with by **Aji Prakoso** for content creators
 
 | | |
 |---|---|
-| 🎓 | [n8n & Automation eCourse](https://classroom.jipraks.com) |
-| 📸 | [@jipraks on Instagram](https://instagram.com/jipraks) |
-| 🎬 | [Aji Prakoso on YouTube](https://youtube.com/@jipraks) |
-| 🌐 | [About Aji Prakoso](https://www.jipraks.com) |
+| | [n8n & Automation eCourse](https://classroom.jipraks.com) |
+| | [@jipraks on Instagram](https://instagram.com/jipraks) |
+| | [Aji Prakoso on YouTube](https://youtube.com/@jipraks) |
+| | [About Aji Prakoso](https://www.jipraks.com) |

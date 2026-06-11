@@ -1568,11 +1568,28 @@ class YTShortClipperApp(ctk.CTk):
             # Old session format — check if video file still exists
             video_path = self.session_data["video_path"]
             if not Path(video_path).exists():
-                messagebox.showerror("Error", 
+                messagebox.showerror("Error",
                     "This is an old session and the video file no longer exists.\n\n"
                     "Please start a new session from the home page.")
                 return
-        
+
+        # Gemini free tier: limit to 3 clips per session
+        GEMINI_FREE_CLIP_LIMIT = 3
+        hf_api_key = self.config.get("ai_providers", {}).get("highlight_finder", {}).get("api_key", "")
+        if hf_api_key:
+            from utils.gemini_client import detect_provider
+            if detect_provider(hf_api_key) == "gemini" and len(selected_highlights) > GEMINI_FREE_CLIP_LIMIT:
+                if not messagebox.askyesno(
+                    "Batas Gemini Free Tier",
+                    f"Gemini Free Tier hanya mendukung {GEMINI_FREE_CLIP_LIMIT} cuplikan per sesi.\n\n"
+                    f"Kamu memilih {len(selected_highlights)} cuplikan. "
+                    f"Hanya {GEMINI_FREE_CLIP_LIMIT} cuplikan pertama yang akan diproses.\n\n"
+                    "Lanjutkan?",
+                ):
+                    return
+                selected_highlights = selected_highlights[:GEMINI_FREE_CLIP_LIMIT]
+                self._last_selected_highlights = selected_highlights
+
         # Store enhancement options
         self.add_captions = add_captions
         self.add_hook = add_hook
@@ -1847,7 +1864,21 @@ class YTShortClipperApp(ctk.CTk):
     def on_error(self, error):
         self.processing = False
         self.pages["processing"].on_error(error)
-    
+
+        # Telegram error notification (background, non-blocking)
+        def _notify_err():
+            try:
+                from telegram_notifier import is_configured, notify_error
+                cfg = self.config.config if hasattr(self.config, 'config') else {}
+                if not is_configured(cfg):
+                    return
+                url = (self.session_data or {}).get("url", "")
+                notify_error(cfg, url, error)
+            except Exception as e:
+                debug_log(f"[Telegram] error notification failed: {e}")
+
+        threading.Thread(target=_notify_err, daemon=True).start()
+
     def open_output(self):
         output_dir = self.config.get("output_dir", str(OUTPUT_DIR))
         if sys.platform == "win32":

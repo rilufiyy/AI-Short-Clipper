@@ -215,16 +215,20 @@ class ReplizUploadDialog(ctk.CTkToplevel):
             try:
                 hook = self.clip_data.get("hook_text", "")
                 title = self.clip_data.get("title", "")
-                
+                channel = self.clip_data.get("channel_name", "")
+                channel_line = f"Channel / Speaker: {channel}" if channel else ""
+
                 prompt = f"""Generate a catchy social media post title and description for this short video clip.
 
 Video Title: {title}
 Hook/Content: {hook}
+{channel_line}
 
 Requirements:
 - Title: Max 100 characters, engaging and clickable
 - Description: 2-3 sentences, include relevant hashtags
 - Make it viral-worthy and platform-friendly
+- Do NOT invent or guess the speaker/preacher name. Use the channel name if provided; otherwise omit any person's name.
 
 Return JSON format:
 {{

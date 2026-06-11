@@ -290,19 +290,23 @@ class YouTubeUploader:
             }
 
 
-def generate_seo_metadata(client, clip_title: str, hook_text: str, model: str = "gpt-4.1", temperature: float = 1.0) -> dict:
+def generate_seo_metadata(client, clip_title: str, hook_text: str, model: str = "gpt-4.1",
+                          temperature: float = 1.0, channel_name: str = "") -> dict:
     """
-    Generate SEO-optimized title and description using GPT
-    
+    Generate SEO-optimized title and description using GPT.
+
     Args:
         client: OpenAI client
         clip_title: Original clip title
         hook_text: Hook text from the clip
         model: GPT model to use
-    
+        channel_name: YouTube channel name (used as speaker/source — do NOT invent names)
+
     Returns:
         dict with title, description, tags
     """
+    channel_line = f"- Channel / Penceramah: {channel_name}" if channel_name else ""
+
     prompt = f"""Kamu adalah expert YouTube SEO untuk konten short-form (Shorts/Reels/TikTok).
 
 Berdasarkan informasi clip berikut, buatkan:
@@ -313,6 +317,7 @@ Berdasarkan informasi clip berikut, buatkan:
 Info Clip:
 - Judul: {clip_title}
 - Hook: {hook_text}
+{channel_line}
 
 Format response dalam JSON:
 {{
@@ -326,6 +331,7 @@ PENTING:
 - Gunakan bahasa Indonesia
 - Include trending hashtags seperti #shorts #viral #fyp
 - Buat yang clickbait tapi tetap relevan
+- JANGAN mengarang atau menebak nama penceramah/narasumber. Jika channel disediakan, gunakan nama itu. Jika tidak ada, jangan sebut nama orang sama sekali.
 
 Return HANYA JSON, tanpa text lain."""
 

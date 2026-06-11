@@ -210,9 +210,10 @@ class YouTubeUploadDialog(ctk.CTkToplevel):
                 metadata = generate_seo_metadata(
                     self.openai_client,
                     self.clip['title'],
-                    self.clip['hook_text'],
+                    self.clip.get('hook_text', ''),
                     self.model,
-                    self.temperature
+                    self.temperature,
+                    channel_name=self.clip.get('channel_name', '')
                 )
                 self.after(0, lambda: self.set_metadata(metadata))
             except Exception as e:

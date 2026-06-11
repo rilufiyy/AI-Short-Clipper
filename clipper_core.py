@@ -2520,6 +2520,17 @@ Transcript:
         else:
             base_prompt = self.system_prompt
 
+        # Truncate transcript if too long (~25k token budget: ~75k chars at 3 chars/token)
+        MAX_TRANSCRIPT_CHARS = 75_000
+        if len(transcript) > MAX_TRANSCRIPT_CHARS:
+            half = MAX_TRANSCRIPT_CHARS // 2
+            transcript = (
+                transcript[:half]
+                + "\n\n[... TRANSCRIPT DIPOTONG — BAGIAN TENGAH DIHILANGKAN ...]\n\n"
+                + transcript[-half:]
+            )
+            self.log(f"  ⚠ Transcript dipotong ke {MAX_TRANSCRIPT_CHARS} karakter (terlalu panjang untuk model)")
+
         # Replace placeholders safely (avoid .format() which breaks on user's curly braces)
         prompt = base_prompt.replace("{num_clips}", str(request_clips))
         prompt = prompt.replace("{video_context}", video_context)

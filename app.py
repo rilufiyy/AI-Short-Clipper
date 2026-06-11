@@ -1071,11 +1071,13 @@ class YTShortClipperApp(ctk.CTk):
             self.update_start_button_state()
 
     def start_processing(self):
-        # Check daily generation quota before anything else
+        # Check daily generation quota before anything else (per-provider)
         from utils.usage_tracker import check_quota
-        max_uses  = self.config.get("daily_quota", {}).get("max_uses", 2)
+        from utils.gemini_client import detect_provider as _detect
+        hf_key = self.config.get("ai_providers", {}).get("highlight_finder", {}).get("api_key", "")
+        self._current_provider = _detect(hf_key)  # store for increment later
         reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
-        allowed, quota_msg = check_quota(max_uses=max_uses, reset_hour=reset_hour)
+        allowed, quota_msg = check_quota(provider=self._current_provider, reset_hour=reset_hour)
         if not allowed:
             messagebox.showwarning("Kuota Harian Habis", quota_msg)
             return
@@ -1175,7 +1177,22 @@ class YTShortClipperApp(ctk.CTk):
         except:
             messagebox.showerror("Error", "Clips must be 1-10!")
             return
-        
+
+        # Enforce per-provider clip limits
+        from utils.gemini_client import detect_provider
+        hf_key = self.config.get("ai_providers", {}).get("highlight_finder", {}).get("api_key", "")
+        provider = detect_provider(hf_key)
+        clip_limit = 3 if provider == "gemini" else 5
+        if num_clips > clip_limit:
+            provider_label = "Gemini Free Tier" if provider == "gemini" else "OpenAI"
+            messagebox.showwarning(
+                f"{provider_label} — Maks {clip_limit} Clip",
+                f"{provider_label} dibatasi maksimal {clip_limit} clip per sesi.\n\n"
+                f"Jumlah clip otomatis diubah: {num_clips} → {clip_limit}."
+            )
+            num_clips = clip_limit
+            self.clips_var.set(str(clip_limit))
+
         # Get selected subtitle language (extract code from "id - Indonesian" format)
         subtitle_selection = self.subtitle_var.get()
         subtitle_lang = subtitle_selection.split(" - ")[0] if " - " in subtitle_selection else "id"
@@ -1793,10 +1810,10 @@ class YTShortClipperApp(ctk.CTk):
     def on_complete(self):
         self.processing = False
         from utils.usage_tracker import increment, get_status_text
-        increment()
-        max_uses   = self.config.get("daily_quota", {}).get("max_uses", 2)
+        provider   = getattr(self, '_current_provider', 'default')
         reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
-        debug_log(f"[Quota] {get_status_text(max_uses, reset_hour)}")
+        increment(provider=provider, reset_hour=reset_hour)
+        debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["processing"].on_complete()
         
         # Reset back button to default (processing page)
@@ -1809,10 +1826,10 @@ class YTShortClipperApp(ctk.CTk):
         """Called when clipping completes successfully"""
         self.processing = False
         from utils.usage_tracker import increment, get_status_text
-        increment()
-        max_uses   = self.config.get("daily_quota", {}).get("max_uses", 2)
+        provider   = getattr(self, '_current_provider', 'default')
         reset_hour = self.config.get("daily_quota", {}).get("reset_hour", 0)
-        debug_log(f"[Quota] {get_status_text(max_uses, reset_hour)}")
+        increment(provider=provider, reset_hour=reset_hour)
+        debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["clipping"].on_complete()
 
         # Telegram notification (background, non-blocking)

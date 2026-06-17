@@ -192,8 +192,9 @@ class ResultsPage(ctk.CTkFrame):
             model = yt_config.get("model", self.config.get("model", "gpt-4.1"))
             
             # Open upload dialog
-            YouTubeUploadDialog(self, clip, yt_client, model, 
-                self.config.get("temperature", 1.0))
+            preacher = self.config.get("_current_preacher", "")
+            YouTubeUploadDialog(self, clip, yt_client, model,
+                self.config.get("temperature", 1.0), preacher_name=preacher)
             
         except ImportError:
             messagebox.showerror("Error", "YouTube upload module not available.\nInstall: pip install google-api-python-client google-auth-oauthlib")
@@ -221,8 +222,9 @@ class ResultsPage(ctk.CTkFrame):
             
             # Open Repliz account selection dialog
             from dialogs.repliz_upload import ReplizUploadDialog
-            ReplizUploadDialog(self, clip, access_key, secret_key, 
-                yt_client, model, self.config.get("temperature", 1.0))
+            preacher = self.config.get("_current_preacher", "")
+            ReplizUploadDialog(self, clip, access_key, secret_key,
+                yt_client, model, self.config.get("temperature", 1.0), preacher_name=preacher)
             
         except ImportError:
             messagebox.showerror("Error", "Repliz upload module not available.")

@@ -70,17 +70,20 @@ class GDriveUploader:
 
     def create_session_folder(self, root_folder_id: str, yt_title: str,
                                date_str: str = None) -> str:
-        """Return the session folder *name* that will be created on Drive.
+        """Return the session folder *path* that will be created on Drive.
 
-        rclone creates the folder automatically when uploading — no explicit
-        mkdir needed. Returns a string like 'Podcast XYZ (2024-06-03)'.
+        rclone creates folders automatically when uploading — no explicit
+        mkdir needed. Returns a nested path like '2026/06/12/Kajian-Slug'.
         """
-        if not date_str:
-            date_str = datetime.now().strftime("%Y-%m-%d")
-        clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', yt_title).strip()[:80]
-        folder_name = f"{clean} ({date_str})" if clean else f"YT Clips ({date_str})"
-        self.log(f"  [Drive]Drive session folder: {folder_name}")
-        return folder_name
+        now = datetime.now()
+        year = now.strftime("%Y")
+        month = now.strftime("%m")
+        day = now.strftime("%d")
+        clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', yt_title).strip()
+        clean = re.sub(r'[\s_]+', '-', clean).strip('-')[:80] or "kajian"
+        folder_path = f"{year}/{month}/{day}/{clean}"
+        self.log(f"  [Drive] Session folder: {folder_path}")
+        return folder_path
 
     # ------------------------------------------------------------------
     # Upload

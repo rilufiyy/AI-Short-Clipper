@@ -2675,12 +2675,25 @@ Transcript:
         if self.is_cancelled():
             return
         
-        # Create output folder: YYYYMMDD-clipNN-title-slug
+        # Create output folder: output/YYYY/MM/DD/nama-kajian/clipNN-title-slug
         _title_raw = highlight.get("title", "")
         _slug = re.sub(r"[^\w\s-]", "", _title_raw.lower())
         _slug = re.sub(r"[\s_]+", "-", _slug).strip("-")[:40]
-        timestamp = datetime.now().strftime("%Y%m%d") + f"-clip{index:02d}" + (f"-{_slug}" if _slug else "")
-        clip_dir = self.output_dir / timestamp
+        _now = datetime.now()
+
+        _src_title = self.source_video_info.get("title", "") if self.source_video_info else ""
+        _kajian_slug = re.sub(r"[^\w\s-]", "", _src_title)
+        _kajian_slug = re.sub(r"[\s_]+", "-", _kajian_slug).strip("-")[:60] or "kajian"
+
+        folder_name = f"clip{index:02d}" + (f"-{_slug}" if _slug else "")
+        clip_dir = (
+            self.output_dir
+            / _now.strftime("%Y")
+            / _now.strftime("%m")
+            / _now.strftime("%d")
+            / _kajian_slug
+            / folder_name
+        )
         clip_dir.mkdir(parents=True, exist_ok=True)
 
         self.log(f"  Output folder: {clip_dir}")

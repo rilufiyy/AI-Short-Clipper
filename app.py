@@ -881,7 +881,7 @@ class YTShortClipperApp(ctk.CTk):
         
         if all_ok:
             # All installed - hide lib status
-            self.lib_status_frame.pack_forget()
+            self.lib_status_frame.grid_remove()
         else:
             # Clear existing widgets
             for widget in self.lib_status_frame.winfo_children():
@@ -915,7 +915,7 @@ class YTShortClipperApp(ctk.CTk):
             install_link.pack(side="left")
             install_link.bind("<Button-1>", lambda e: self.show_page("lib_status"))
             
-            self.lib_status_frame.pack(fill="x", padx=20, pady=(5, 0))
+            self.lib_status_frame.grid(row=5, column=0, sticky="ew", padx=20, pady=(5, 0))
         
         # Update start button state
         self.update_start_button_state()

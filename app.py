@@ -228,20 +228,30 @@ class YTShortClipperApp(ctk.CTk):
     def create_home_page(self):
         page = ctk.CTkFrame(self.container, fg_color=("#1a1a1a", "#0a0a0a"))
         self.pages["home"] = page
-        
+
+        # Grid layout: fixed rows for content, row 2 is spacer that grows with window
+        page.grid_columnconfigure(0, weight=1)
+        page.grid_rowconfigure(0, weight=0)  # header
+        page.grid_rowconfigure(1, weight=0)  # top_row
+        page.grid_rowconfigure(2, weight=1)  # spacer (absorbs extra space when maximized)
+        page.grid_rowconfigure(3, weight=0)  # cookies
+        page.grid_rowconfigure(4, weight=0)  # find highlights + browse
+        page.grid_rowconfigure(5, weight=0)  # lib_status
+        page.grid_rowconfigure(6, weight=0)  # footer
+
         # Import header and footer components
         from components.page_layout import PageHeader, PageFooter
-        
+
         # Top header
         header = PageHeader(page, self, show_nav_buttons=True)
-        header.pack(fill="x", padx=20, pady=(15, 10))
-        
+        header.grid(row=0, column=0, sticky="ew", padx=20, pady=(15, 10))
+
         # Load icons for buttons
         try:
             play_img = Image.open(ASSETS_DIR / "play.png")
             play_img.thumbnail((20, 20), Image.Resampling.LANCZOS)
             self.play_icon = ctk.CTkImage(light_image=play_img, dark_image=play_img, size=(20, 20))
-            
+
             refresh_img = Image.open(ASSETS_DIR / "refresh.png")
             refresh_img.thumbnail((20, 20), Image.Resampling.LANCZOS)
             self.refresh_icon = ctk.CTkImage(light_image=refresh_img, dark_image=refresh_img, size=(20, 20))
@@ -249,10 +259,10 @@ class YTShortClipperApp(ctk.CTk):
             debug_log(f"Icon load error: {e}")
             self.play_icon = None
             self.refresh_icon = None
-        
+
         # ===== TOP ROW: Left config + Right thumbnail =====
         top_row = ctk.CTkFrame(page, fg_color="transparent")
-        top_row.pack(fill="x", padx=20, pady=(5, 10))
+        top_row.grid(row=1, column=0, sticky="ew", padx=20, pady=(5, 10))
         top_row.grid_columnconfigure(0, weight=1)
         top_row.grid_columnconfigure(1, weight=0)
         top_row.grid_rowconfigure(0, weight=1)
@@ -367,18 +377,20 @@ class YTShortClipperApp(ctk.CTk):
         self.thumb_frame.pack_propagate(False)
         
         self.create_preview_placeholder()
-        
-        # ===== MIDDLE ROW: Cookies only (full width) =====
+
+        # Spacer row — grid row 2 has weight=1 so it grows; other rows stay fixed
+        ctk.CTkFrame(page, fg_color="transparent").grid(row=2, column=0, sticky="nsew")
+
+        # ===== COOKIES =====
         middle_row = ctk.CTkFrame(page, fg_color="transparent")
-        middle_row.pack(fill="x", padx=20, pady=(20, 10))
-        
-        # YouTube Cookies card (full width)
+        middle_row.grid(row=3, column=0, sticky="ew", padx=20, pady=(0, 8))
+
         cookies_frame = ctk.CTkFrame(middle_row, fg_color=("#2b2b2b", "#1a1a1a"), corner_radius=8)
         cookies_frame.pack(fill="x")
-        
-        ctk.CTkLabel(cookies_frame, text="YouTube Cookies", font=ctk.CTkFont(size=11, weight="bold"), 
+
+        ctk.CTkLabel(cookies_frame, text="YouTube Cookies", font=ctk.CTkFont(size=11, weight="bold"),
             anchor="w").pack(fill="x", padx=12, pady=(10, 5))
-        
+
         self.cookies_status_label = ctk.CTkLabel(cookies_frame, text="🍪 No cookies",
             font=ctk.CTkFont(size=10), anchor="w", text_color="gray")
         self.cookies_status_label.pack(fill="x", padx=12, pady=(0, 5))
@@ -401,23 +413,10 @@ class YTShortClipperApp(ctk.CTk):
             button_color=("#3a3a3a", "#2a2a2a"),
             button_hover_color=("#4a4a4a", "#3a3a3a"),
         ).pack(side="left")
-        
-        # Footer
-        footer = PageFooter(page, self)
-        footer.pack(fill="x", padx=20, pady=(5, 8), side="bottom")
 
-        # ===== LIB STATUS =====
-        self.lib_status_frame = ctk.CTkFrame(page, fg_color="transparent")
-        self.lib_status_frame.pack(fill="x", padx=20, pady=(0, 2), side="bottom")
-
-        self.lib_status_label = ctk.CTkLabel(self.lib_status_frame, text="",
-            font=ctk.CTkFont(size=10), cursor="hand2")
-        self.lib_status_label.pack()
-        self.lib_status_label.bind("<Button-1>", lambda e: self.show_page("lib_status"))
-
-        # ===== BOTTOM: Generate button + Browse =====
+        # ===== FIND HIGHLIGHTS + BROWSE =====
         bottom_section = ctk.CTkFrame(page, fg_color="transparent")
-        bottom_section.pack(fill="x", padx=20, pady=(0, 5), side="bottom")
+        bottom_section.grid(row=4, column=0, sticky="ew", padx=20, pady=(0, 5))
 
         self.start_btn = ctk.CTkButton(bottom_section, text="Find Highlights", image=self.play_icon,
             compound="left", font=ctk.CTkFont(size=13, weight="bold"),
@@ -430,7 +429,20 @@ class YTShortClipperApp(ctk.CTk):
         sessions_link.pack()
         sessions_link.bind("<Button-1>", lambda e: self.show_page("session_browser"))
 
-        # Check lib and cookies status (must be after widgets are created)
+        # ===== LIB STATUS =====
+        self.lib_status_frame = ctk.CTkFrame(page, fg_color="transparent")
+        self.lib_status_frame.grid(row=5, column=0, sticky="ew", padx=20)
+
+        self.lib_status_label = ctk.CTkLabel(self.lib_status_frame, text="",
+            font=ctk.CTkFont(size=10), cursor="hand2")
+        self.lib_status_label.pack()
+        self.lib_status_label.bind("<Button-1>", lambda e: self.show_page("lib_status"))
+
+        # ===== FOOTER =====
+        footer = PageFooter(page, self)
+        footer.grid(row=6, column=0, sticky="ew", padx=20, pady=(5, 8))
+
+        # Check status (setelah semua widget dibuat)
         self.check_lib_status()
         self.check_cookies_status()
     

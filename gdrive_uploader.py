@@ -81,7 +81,7 @@ class GDriveUploader:
         day = now.strftime("%d")
         clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', yt_title).strip()
         clean = re.sub(r'[\s_]+', '-', clean).strip('-')[:80] or "kajian"
-        folder_path = f"{year}/{month}/{day}/{clean}"
+        folder_path = f"AI Clipper/{year}/{month}/{day}/{clean}"
         self.log(f"  [Drive] Session folder: {folder_path}")
         return folder_path
 

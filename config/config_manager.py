@@ -84,7 +84,7 @@ class ConfigManager:
                     config["gdrive"] = {
                         "enabled": False,
                         "auto_upload": True,
-                        "folder_id": "1wHYDufQ4NS5d5yz3zp2rmd6wMWtYE2FZ"
+                        "folder_id": "1jma7m9og_95N6B56Bc7OcS1zEibSFhmD"
                     }
 
                 # Add default Telegram settings if not exists
@@ -141,7 +141,7 @@ class ConfigManager:
             "gdrive": {
                 "enabled": False,
                 "auto_upload": True,
-                "folder_id": "1wHYDufQ4NS5d5yz3zp2rmd6wMWtYE2FZ"
+                "folder_id": "1jma7m9og_95N6B56Bc7OcS1zEibSFhmD"
             },
             "telegram": {
                 "enabled": False,

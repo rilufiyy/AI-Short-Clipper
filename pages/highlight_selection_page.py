@@ -83,15 +83,16 @@ class HighlightSelectionPage(ctk.CTkFrame):
         
         # Hook toggle
         hook_row = ctk.CTkFrame(options_frame, fg_color="transparent")
-        hook_row.pack(fill="x", padx=12, pady=(0, 10))
-        
-        ctk.CTkLabel(hook_row, text="🪝 Add Hook Text", font=ctk.CTkFont(size=10), 
+        hook_row.pack(fill="x", padx=12, pady=(0, 3))
+
+        ctk.CTkLabel(hook_row, text="🪝 Add Hook Text", font=ctk.CTkFont(size=10),
             anchor="w").pack(side="left")
-        
+
         self.hook_var = ctk.BooleanVar(value=False)
-        self.hook_switch = ctk.CTkSwitch(hook_row, text="OFF", variable=self.hook_var, 
+        self.hook_switch = ctk.CTkSwitch(hook_row, text="OFF", variable=self.hook_var,
             width=36, height=18, command=self.update_hook_switch_text)
         self.hook_switch.pack(side="right")
+
         
         # Scrollable list of highlights
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -260,7 +261,7 @@ class HighlightSelectionPage(ctk.CTkFrame):
         # Get enhancement options
         add_captions = self.caption_var.get()
         add_hook = self.hook_var.get()
-        
+
         # Confirm with user
         count = len(selected)
         enhancements = []
@@ -268,15 +269,15 @@ class HighlightSelectionPage(ctk.CTkFrame):
             enhancements.append("Captions")
         if add_hook:
             enhancements.append("Hook Text")
-        
+
         enhancement_text = " + ".join(enhancements) if enhancements else "No enhancements"
-        
-        if not messagebox.askyesno("Confirm Processing", 
+
+        if not messagebox.askyesno("Confirm Processing",
             f"Process {count} selected clip{'s' if count > 1 else ''}?\n\n"
             f"Enhancements: {enhancement_text}\n\n"
             "Video sections will be downloaded individually for each clip."):
             return
-        
+
         # Call process callback with selected highlights and options
         self.on_process(selected, add_captions, add_hook)
     

@@ -80,8 +80,9 @@ class YTShortClipperApp(ctk.CTk):
         self.session_data = None  # Will store result from find_highlights_only
         
         self.title("YT Short Clipper")
-        self.geometry("780x620")
-        self.resizable(False, False)
+        self.geometry("780x720")
+        self.minsize(780, 720)
+        self.resizable(True, True)
         
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -375,14 +376,28 @@ class YTShortClipperApp(ctk.CTk):
         ctk.CTkLabel(cookies_frame, text="YouTube Cookies", font=ctk.CTkFont(size=11, weight="bold"), 
             anchor="w").pack(fill="x", padx=12, pady=(10, 5))
         
-        self.cookies_status_label = ctk.CTkLabel(cookies_frame, text="🍪 No cookies", 
+        self.cookies_status_label = ctk.CTkLabel(cookies_frame, text="🍪 No cookies",
             font=ctk.CTkFont(size=10), anchor="w", text_color="gray")
         self.cookies_status_label.pack(fill="x", padx=12, pady=(0, 5))
-        
-        upload_cookies_btn = ctk.CTkButton(cookies_frame, text="📁 Upload", height=28,
+
+        cookies_bottom_row = ctk.CTkFrame(cookies_frame, fg_color="transparent")
+        cookies_bottom_row.pack(fill="x", padx=12, pady=(0, 10))
+
+        upload_cookies_btn = ctk.CTkButton(cookies_bottom_row, text="📁 Upload", height=32,
             fg_color=("#3a3a3a", "#2a2a2a"), hover_color=("#4a4a4a", "#3a3a3a"),
             font=ctk.CTkFont(size=10), command=self.upload_cookies)
-        upload_cookies_btn.pack(fill="x", padx=12, pady=(0, 10))
+        upload_cookies_btn.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        ctk.CTkLabel(cookies_bottom_row, text="Simpan ke", font=ctk.CTkFont(size=10, weight="bold")).pack(side="left", padx=(0, 6))
+        self.save_to_var = ctk.StringVar(value="Local")
+        ctk.CTkOptionMenu(cookies_bottom_row,
+            variable=self.save_to_var,
+            values=["Local", "Google Drive", "Local + Google Drive"],
+            width=190, height=32,
+            fg_color=("#2b2b2b", "#1a1a1a"),
+            button_color=("#3a3a3a", "#2a2a2a"),
+            button_hover_color=("#4a4a4a", "#3a3a3a"),
+        ).pack(side="left")
         
         # ===== BOTTOM: Generate button + Browse =====
         bottom_section = ctk.CTkFrame(page, fg_color="transparent")
@@ -1609,8 +1624,11 @@ class YTShortClipperApp(ctk.CTk):
         self.pages["results"].show_results()
         self.show_page("results")
     
-    def process_selected_highlights(self, selected_highlights: list, add_captions: bool = False, add_hook: bool = False):
+    def process_selected_highlights(self, selected_highlights: list, add_captions: bool = False, add_hook: bool = False, save_to: str = "Local"):
         """NEW: Phase 2 - Process only selected highlights"""
+        # Use save_to from home page dropdown if available
+        save_to = getattr(self, 'save_to_var', None)
+        save_to = save_to.get() if save_to else "Local"
         # Store for Telegram notification after completion
         self._last_selected_highlights = selected_highlights
         import datetime as _dt
@@ -1659,6 +1677,7 @@ class YTShortClipperApp(ctk.CTk):
         # Store enhancement options
         self.add_captions = add_captions
         self.add_hook = add_hook
+        self.save_to = save_to
         
         # Reset UI for clipping
         self.processing = True
@@ -1737,8 +1756,16 @@ class YTShortClipperApp(ctk.CTk):
             if gpu_settings.get("enabled", False):
                 core.enable_gpu_acceleration(True)
 
-            # Inject Google Drive settings
-            core.gdrive_settings = self.config.get("gdrive", {})
+            # Inject Google Drive settings based on user's save_to choice
+            gdrive_cfg = dict(self.config.get("gdrive", {}))
+            save_to = getattr(self, 'save_to', 'Local')
+            if save_to == "Local":
+                gdrive_cfg["enabled"] = False
+                gdrive_cfg["auto_upload"] = False
+            else:  # "Google Drive" or "Local + Google Drive"
+                gdrive_cfg["enabled"] = True
+                gdrive_cfg["auto_upload"] = True
+            core.gdrive_settings = gdrive_cfg
 
             # Process selected highlights
             # New flow: download sections per clip using URL

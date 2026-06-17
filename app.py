@@ -419,16 +419,16 @@ class YTShortClipperApp(ctk.CTk):
         bottom_section = ctk.CTkFrame(page, fg_color="transparent")
         bottom_section.pack(fill="x", padx=20, pady=(0, 5), side="bottom")
 
-        sessions_link = ctk.CTkLabel(bottom_section, text="📋 Browse Sessions",
-            font=ctk.CTkFont(size=10), text_color=("#3B8ED0", "#1F6AA5"), cursor="hand2")
-        sessions_link.pack()
-        sessions_link.bind("<Button-1>", lambda e: self.show_page("session_browser"))
-
         self.start_btn = ctk.CTkButton(bottom_section, text="Find Highlights", image=self.play_icon,
             compound="left", font=ctk.CTkFont(size=13, weight="bold"),
             height=40, command=self.start_processing, state="disabled",
             fg_color="gray", hover_color="gray", corner_radius=8)
         self.start_btn.pack(fill="x", pady=(0, 5))
+
+        sessions_link = ctk.CTkLabel(bottom_section, text="📋 Browse Sessions",
+            font=ctk.CTkFont(size=10), text_color=("#3B8ED0", "#1F6AA5"), cursor="hand2")
+        sessions_link.pack()
+        sessions_link.bind("<Button-1>", lambda e: self.show_page("session_browser"))
 
         # Check lib and cookies status (must be after widgets are created)
         self.check_lib_status()

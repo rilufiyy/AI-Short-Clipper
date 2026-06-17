@@ -253,10 +253,13 @@ class YTShortClipperApp(ctk.CTk):
         # ===== TOP ROW: Left config + Right thumbnail =====
         top_row = ctk.CTkFrame(page, fg_color="transparent")
         top_row.pack(fill="x", padx=20, pady=(5, 10))
-        
+        top_row.grid_columnconfigure(0, weight=1)
+        top_row.grid_columnconfigure(1, weight=0)
+        top_row.grid_rowconfigure(0, weight=1)
+
         # Left column - URL, Subtitle, Clip Count
         left_col = ctk.CTkFrame(top_row, fg_color="transparent")
-        left_col.pack(side="left", fill="y", padx=(0, 20))
+        left_col.grid(row=0, column=0, sticky="nsew", padx=(0, 20))
         
         # YouTube URL
         ctk.CTkLabel(left_col, text="YouTube URL", font=ctk.CTkFont(size=11, weight="bold"), 
@@ -267,10 +270,10 @@ class YTShortClipperApp(ctk.CTk):
         
         self.url_var = ctk.StringVar()
         self.url_var.trace_add("write", self.on_url_change)
-        self.url_entry = ctk.CTkEntry(url_input_container, textvariable=self.url_var, 
-            placeholder_text="Paste YouTube link...", width=220, height=32, border_width=1,
+        self.url_entry = ctk.CTkEntry(url_input_container, textvariable=self.url_var,
+            placeholder_text="Paste YouTube link...", height=32, border_width=1,
             border_color=("#3a3a3a", "#2a2a2a"), fg_color=("#1a1a1a", "#0a0a0a"))
-        self.url_entry.pack(side="left", padx=(0, 5))
+        self.url_entry.pack(side="left", padx=(0, 5), fill="x", expand=True)
         
         self.paste_btn = ctk.CTkButton(url_input_container, text="📋 Paste", width=65, height=32,
             fg_color=("#3a3a3a", "#2a2a2a"), hover_color=("#4a4a4a", "#3a3a3a"),
@@ -286,12 +289,12 @@ class YTShortClipperApp(ctk.CTk):
         self.subtitle_loaded = False
         
         self.subtitle_var = ctk.StringVar(value="id - Indonesian")
-        self.subtitle_dropdown = ctk.CTkOptionMenu(self.subtitle_frame, 
-            variable=self.subtitle_var, values=["id - Indonesian"], width=290,
+        self.subtitle_dropdown = ctk.CTkOptionMenu(self.subtitle_frame,
+            variable=self.subtitle_var, values=["id - Indonesian"],
             height=32, fg_color=("#2b2b2b", "#1a1a1a"),
             button_color=("#3a3a3a", "#2a2a2a"), button_hover_color=("#4a4a4a", "#3a3a3a"),
             state="disabled")
-        self.subtitle_dropdown.pack(anchor="w")
+        self.subtitle_dropdown.pack(fill="x")
         
         self.subtitle_loading = ctk.CTkLabel(self.subtitle_frame, text="⏳ Loading...", 
             font=ctk.CTkFont(size=10), text_color="gray")
@@ -319,11 +322,11 @@ class YTShortClipperApp(ctk.CTk):
         self.clip_mode_dropdown = ctk.CTkOptionMenu(left_col,
             variable=self.clip_mode_var,
             values=["Random Short Video", "Continue Part Video"],
-            width=290, height=32,
+            height=32,
             fg_color=("#2b2b2b", "#1a1a1a"),
             button_color=("#3a3a3a", "#2a2a2a"),
             button_hover_color=("#4a4a4a", "#3a3a3a"))
-        self.clip_mode_dropdown.pack(anchor="w")
+        self.clip_mode_dropdown.pack(fill="x")
 
         # Nama Penceramah
         ctk.CTkLabel(left_col, text="Nama Penceramah", font=ctk.CTkFont(size=11, weight="bold"),
@@ -339,12 +342,12 @@ class YTShortClipperApp(ctk.CTk):
             values=PREACHER_OPTIONS,
             variable=self.preacher_var,
             command=self._on_preacher_select,
-            width=200, height=32,
+            height=32,
             fg_color=("#2b2b2b", "#1a1a1a"),
             button_color=("#3a3a3a", "#2a2a2a"),
             button_hover_color=("#4a4a4a", "#3a3a3a"),
         )
-        self.preacher_dropdown.pack(side="left", padx=(0, 6))
+        self.preacher_dropdown.pack(side="left", padx=(0, 6), fill="x", expand=True)
 
         self.preacher_entry = ctk.CTkEntry(
             preacher_row,
@@ -355,7 +358,7 @@ class YTShortClipperApp(ctk.CTk):
 
         # Right column - Thumbnail 16:9
         right_col = ctk.CTkFrame(top_row, fg_color="transparent")
-        right_col.pack(side="right", fill="y")
+        right_col.grid(row=0, column=1, sticky="ne")
         
         # Video preview frame 16:9 (400x225)
         self.thumb_frame = ctk.CTkFrame(right_col, width=400, height=225, 

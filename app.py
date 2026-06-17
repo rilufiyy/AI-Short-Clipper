@@ -370,7 +370,7 @@ class YTShortClipperApp(ctk.CTk):
         
         # ===== MIDDLE ROW: Cookies only (full width) =====
         middle_row = ctk.CTkFrame(page, fg_color="transparent")
-        middle_row.pack(fill="x", padx=20, pady=(0, 10))
+        middle_row.pack(fill="x", padx=20, pady=(20, 10))
         
         # YouTube Cookies card (full width)
         cookies_frame = ctk.CTkFrame(middle_row, fg_color=("#2b2b2b", "#1a1a1a"), corner_radius=8)
@@ -402,39 +402,37 @@ class YTShortClipperApp(ctk.CTk):
             button_hover_color=("#4a4a4a", "#3a3a3a"),
         ).pack(side="left")
         
-        # ===== BOTTOM: Generate button + Browse =====
-        bottom_section = ctk.CTkFrame(page, fg_color="transparent")
-        bottom_section.pack(fill="x", padx=20, pady=(0, 5))
-        
-        self.start_btn = ctk.CTkButton(bottom_section, text="Find Highlights", image=self.play_icon, 
-            compound="left", font=ctk.CTkFont(size=13, weight="bold"),
-            height=40, command=self.start_processing, state="disabled", 
-            fg_color="gray", hover_color="gray", corner_radius=8)
-        self.start_btn.pack(fill="x", pady=(0, 5))
-        
-        sessions_link = ctk.CTkLabel(bottom_section, text="📋 Browse Sessions", 
-            font=ctk.CTkFont(size=10), text_color=("#3B8ED0", "#1F6AA5"), cursor="hand2")
-        sessions_link.pack()
-        sessions_link.bind("<Button-1>", lambda e: self.show_page("session_browser"))
-        
-        # ===== LIB STATUS =====
-        self.lib_status_frame = ctk.CTkFrame(page, fg_color="transparent")
-        self.lib_status_frame.pack(fill="x", padx=20, pady=(5, 0))
-        
-        self.lib_status_label = ctk.CTkLabel(self.lib_status_frame, text="", 
-            font=ctk.CTkFont(size=10), cursor="hand2")
-        self.lib_status_label.pack()
-        self.lib_status_label.bind("<Button-1>", lambda e: self.show_page("lib_status"))
-        
-        # Check and update lib status
-        self.check_lib_status()
-        
-        # Check cookies status
-        self.check_cookies_status()
-        
         # Footer
         footer = PageFooter(page, self)
         footer.pack(fill="x", padx=20, pady=(5, 8), side="bottom")
+
+        # ===== LIB STATUS =====
+        self.lib_status_frame = ctk.CTkFrame(page, fg_color="transparent")
+        self.lib_status_frame.pack(fill="x", padx=20, pady=(0, 2), side="bottom")
+
+        self.lib_status_label = ctk.CTkLabel(self.lib_status_frame, text="",
+            font=ctk.CTkFont(size=10), cursor="hand2")
+        self.lib_status_label.pack()
+        self.lib_status_label.bind("<Button-1>", lambda e: self.show_page("lib_status"))
+
+        # ===== BOTTOM: Generate button + Browse =====
+        bottom_section = ctk.CTkFrame(page, fg_color="transparent")
+        bottom_section.pack(fill="x", padx=20, pady=(0, 5), side="bottom")
+
+        sessions_link = ctk.CTkLabel(bottom_section, text="📋 Browse Sessions",
+            font=ctk.CTkFont(size=10), text_color=("#3B8ED0", "#1F6AA5"), cursor="hand2")
+        sessions_link.pack()
+        sessions_link.bind("<Button-1>", lambda e: self.show_page("session_browser"))
+
+        self.start_btn = ctk.CTkButton(bottom_section, text="Find Highlights", image=self.play_icon,
+            compound="left", font=ctk.CTkFont(size=13, weight="bold"),
+            height=40, command=self.start_processing, state="disabled",
+            fg_color="gray", hover_color="gray", corner_radius=8)
+        self.start_btn.pack(fill="x", pady=(0, 5))
+
+        # Check lib and cookies status (must be after widgets are created)
+        self.check_lib_status()
+        self.check_cookies_status()
     
     def create_preview_placeholder(self):
         """Create placeholder content for video preview"""

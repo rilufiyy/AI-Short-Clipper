@@ -26,6 +26,11 @@ Panduan lengkap untuk menggunakan YT-Short-Clipper bagi pemula.
   - [5.5 Validasi & Simpan](#55-validasi--simpan)
 - [6. Mulai Menggunakan Aplikasi](#6-mulai-menggunakan-aplikasi)
 - [7. Google Drive Auto-Upload (Opsional)](#7-google-drive-auto-upload-opsional)
+  - [7.1 Download & Letakkan rclone](#71-download--letakkan-rclone)
+  - [7.2 Konfigurasi rclone (lakukan sekali)](#72-konfigurasi-rclone-lakukan-sekali)
+  - [7.3 Verifikasi Koneksi](#73-verifikasi-koneksi)
+  - [7.4 Aktifkan di Aplikasi](#74-aktifkan-di-aplikasi)
+  - [7.5 Struktur Folder di Google Drive](#75-struktur-folder-di-google-drive)
 
 ---
 
@@ -238,60 +243,188 @@ output/
 
 ## 7. Google Drive Auto-Upload (Opsional)
 
-Aplikasi bisa otomatis menyimpan hasil clip ke Google Drive setelah selesai diproses.
+Aplikasi bisa otomatis menyimpan hasil clip ke Google Drive setelah selesai diproses.  
+Fitur ini menggunakan **rclone** sebagai backend — tidak membutuhkan coding, tidak membutuhkan `client_secret.json`.
 
-### Cara Menjalankan (Tetap Sama)
+---
 
-```bash
-python app.py
+### 7.1 Download & Letakkan rclone
+
+1. Buka halaman download rclone: [https://rclone.org/downloads/](https://rclone.org/downloads/)
+2. Download versi **Windows — AMD64** (file `.zip`)
+
+   > Contoh nama file: `rclone-v1.xx.x-windows-amd64.zip`
+
+3. Extract file zip tersebut
+4. Salin file **`rclone.exe`** ke folder yang sama dengan `YTShortClipper.exe`
+
+   ```
+   dist/
+   ├── YTShortClipper.exe
+   └── rclone.exe        ← letakkan di sini
+   ```
+
+---
+
+### 7.2 Konfigurasi rclone (lakukan sekali)
+
+1. Buka **Command Prompt** atau **PowerShell** di folder yang berisi `rclone.exe`
+
+   > Cara cepat: di File Explorer, klik address bar, ketik `cmd`, lalu Enter
+
+2. Jalankan perintah berikut:
+
+   ```
+   rclone.exe config
+   ```
+
+3. Akan muncul menu seperti berikut — ketik **`n`** lalu Enter untuk membuat remote baru:
+
+   ```
+   No remotes found, make a new one?
+   n) New remote
+   q) Quit config
+   n/q> n
+   ```
+
+4. **Beri nama remote** → ketik **`gdrive`** lalu Enter (harus tepat, huruf kecil semua):
+
+   ```
+   name> gdrive
+   ```
+
+5. **Pilih tipe storage** → cari nomor untuk **Google Drive** dan ketik nomornya, lalu Enter:
+
+   ```
+   Storage> drive
+   ```
+
+   > Atau ketik kata `drive` langsung — rclone akan mencocokkan otomatis.
+
+6. **client_id** → kosongkan, langsung Enter:
+
+   ```
+   client_id>
+   ```
+
+7. **client_secret** → kosongkan, langsung Enter:
+
+   ```
+   client_secret>
+   ```
+
+8. **scope** → ketik **`1`** (drive — akses penuh) lalu Enter:
+
+   ```
+   scope> 1
+   ```
+
+9. **root_folder_id** → kosongkan, langsung Enter:
+
+   ```
+   root_folder_id>
+   ```
+
+10. **service_account_file** → kosongkan, langsung Enter:
+
+    ```
+    service_account_file>
+    ```
+
+11. **Edit advanced config?** → ketik **`n`** lalu Enter:
+
+    ```
+    Edit advanced config? (y/n)> n
+    ```
+
+12. **Use auto config?** → ketik **`y`** lalu Enter:
+
+    ```
+    Use auto config? (y/n)> y
+    ```
+
+    Browser akan otomatis terbuka. **Login dengan akun Google** yang memiliki akses ke folder Drive tujuan, lalu klik **"Allow"**.
+
+13. Setelah browser menampilkan "Success!", kembali ke terminal.
+
+14. **Configure this as a Shared Drive (Team Drive)?** → ketik **`n`** lalu Enter:
+
+    ```
+    Configure this as a Shared Drive (Team Drive)? (y/n)> n
+    ```
+
+15. Konfirmasi konfigurasi dengan mengetik **`y`** lalu Enter:
+
+    ```
+    Keep this "gdrive" remote? (y/n)> y
+    ```
+
+16. Ketik **`q`** lalu Enter untuk keluar dari config:
+
+    ```
+    q) Quit config
+    e/n/d/r/c/s/q> q
+    ```
+
+---
+
+### 7.3 Verifikasi Koneksi
+
+Pastikan rclone berhasil terhubung ke Google Drive dengan menjalankan:
+
+```
+rclone.exe ls gdrive:/
 ```
 
-Tidak ada perubahan cara menjalankan. Fitur Google Drive bersifat **opsional**.
+Jika berhasil, akan tampil daftar file/folder di root Google Drive kamu.  
+Jika muncul error, ulangi langkah 7.2 dari awal.
 
-### Setup Google Drive
+---
 
-> **Syarat:** File `client_secret.json` harus sudah ada di folder aplikasi (sama dengan setup YouTube upload).
+### 7.4 Aktifkan di Aplikasi
 
-**Langkah 1 — Autentikasi (lakukan sekali):**
+Setelah rclone terkonfigurasi, aktifkan fitur upload di aplikasi:
 
-Jalankan perintah ini di terminal dari folder aplikasi:
+1. Buka aplikasi **YTShortClipper.exe**
+2. Di halaman utama, cari dropdown **"Simpan ke"** (ada di samping tombol Upload Cookies)
+3. Pilih salah satu opsi:
+   - **Local** — hanya simpan ke komputer (default)
+   - **Google Drive** — hanya upload ke Drive (tidak simpan lokal)
+   - **Local + Google Drive** — simpan ke komputer sekaligus upload ke Drive
 
-```bash
-python -c "from gdrive_uploader import GDriveUploader; GDriveUploader().authenticate()"
-```
+   > Pilih **"Local + Google Drive"** jika ingin backup otomatis.
 
-Browser akan terbuka, login dengan akun Google dan izinkan akses. Kredensial disimpan otomatis ke `gdrive_credentials.json`.
+4. Klik **"Find Highlights"** seperti biasa — upload ke Drive akan berjalan otomatis setelah setiap clip selesai diproses.
 
-**Langkah 2 — Aktifkan di config:**
+---
 
-Buka `config.json` (atau lewat Settings di app), set:
+### 7.5 Struktur Folder di Google Drive
 
-```json
-"gdrive": {
-  "enabled": true,
-  "auto_upload": true,
-  "folder_id": "1wHYDufQ4NS5d5yz3zp2rmd6wMWtYE2FZ"
-}
-```
-
-Ganti `folder_id` dengan ID folder Google Drive kamu sendiri (bagian terakhir dari URL folder Drive).
-
-### Struktur Folder di Google Drive
+Hasil clip akan tersimpan dengan struktur berikut di Google Drive:
 
 ```
-[Folder Drive kamu]
-└── Podcast XYZ dengan Andre Taulany (2024-06-03)   ← dibuat otomatis per video
-    ├── Clip 01 — Hampir Bangkrut Gara-Gara Ini
-    │   ├── master.mp4
-    │   ├── data.json
-    │   └── content.txt
-    └── Clip 02 — Statement Berani Soal Industri
-        └── ...
+Google Drive/
+└── AI Clipper/
+    └── 2026/
+        └── 06/
+            └── 18/
+                └── Judul-Video-YouTube/
+                    ├── Clip 01 — Nama Highlight
+                    │   ├── master.mp4
+                    │   ├── data.json
+                    │   └── content.txt
+                    └── Clip 02 — Nama Highlight
+                        └── ...
 ```
 
-Nama folder di Drive menggunakan **judul video YouTube** + tanggal, sehingga mudah dikenali.
+Struktur dibuat otomatis berdasarkan **tahun/bulan/tanggal/judul video** — mudah dicari dan rapi.
 
-> **Catatan:** Library yang dibutuhkan (`google-api-python-client`, dll) sudah ada di `requirements.txt`, tidak perlu install tambahan.
+---
+
+> **💡 Tips:**
+> - File `rclone.exe` harus selalu berada di folder yang sama dengan `YTShortClipper.exe`
+> - Login Google hanya perlu dilakukan **sekali** — credentials disimpan otomatis oleh rclone
+> - Jika ganti akun Google, jalankan ulang `rclone.exe config` dan hapus remote `gdrive` yang lama, lalu buat ulang
 
 ---
 

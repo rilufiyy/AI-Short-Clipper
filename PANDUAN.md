@@ -370,10 +370,10 @@ Fitur ini menggunakan **rclone** sebagai backend — tidak membutuhkan coding, t
 
 ### 7.3 Verifikasi Koneksi
 
-Pastikan rclone berhasil terhubung ke Google Drive dengan menjalankan:
+Pastikan rclone berhasil terhubung ke Google Drive. Buka cmd di folder yang berisi `rclone.exe`, lalu jalankan:
 
 ```
-rclone.exe ls gdrive:/
+.\rclone.exe ls gdrive:/
 ```
 
 Jika berhasil, akan tampil daftar file/folder di root Google Drive kamu.  

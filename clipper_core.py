@@ -197,6 +197,7 @@ class AutoClipperCore:
         self.source_url = ""
         self.source_video_info = {}
         self.srt_path = None
+        self._highlights = []
 
         # Google Drive auto-upload settings (injected by caller)
         self.gdrive_settings = {}
@@ -760,6 +761,7 @@ Transcript:
         self.set_progress("Finding highlights...", 0.3)
         transcript = self.parse_srt(srt_path)
         highlights = self.find_highlights(transcript, video_info, num_clips)
+        self._highlights = highlights or []
 
         if self.is_cancelled():
             return
@@ -2042,7 +2044,7 @@ Transcript:
             audio_file
         ]
         self.log("  Extracting audio from video...")
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         if result.returncode != 0:
             if os.path.exists(audio_file):
@@ -2054,7 +2056,7 @@ Transcript:
         
         # Get total audio duration
         probe_cmd = [self.ffmpeg_path, "-i", audio_file, "-f", "null", "-"]
-        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        probe_result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", probe_result.stderr)
         total_duration = 0
         if duration_match:
@@ -2101,7 +2103,7 @@ Transcript:
                     "-b:a", "64k",
                     chunk_file
                 ]
-                subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+                subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
                 
                 chunk_size = os.path.getsize(chunk_file) / (1024 * 1024)
                 self.log(f"  Transcribing chunk {i+1}/{chunk_count} ({chunk_size:.1f}MB, ~{chunk_duration:.0f}s)...")
@@ -3573,7 +3575,7 @@ Transcript:
             self.ffmpeg_path, "-i", tts_file,
             "-f", "null", "-"
         ]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         
         if duration_match:
@@ -3599,7 +3601,7 @@ Transcript:
         
         # Get input video info
         probe_cmd = [self.ffmpeg_path, "-i", input_path]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         # Extract fps
         fps_match = re.search(r'(\d+(?:\.\d+)?)\s*fps', result.stderr)
@@ -3716,7 +3718,7 @@ Transcript:
             "-c", "copy",
             output_path
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         # If concat demuxer fails, try filter_complex as fallback
         if result.returncode != 0:
@@ -3802,7 +3804,7 @@ Transcript:
             "-ac", "1",  # Mono
             audio_file
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         if result.returncode != 0:
             self.log(f"  Warning: Audio extraction failed")
@@ -3821,7 +3823,7 @@ Transcript:
         
         # Get audio duration for token reporting
         probe_cmd = [self.ffmpeg_path, "-i", audio_file, "-f", "null", "-"]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         audio_duration = 0
         if duration_match:
@@ -4028,10 +4030,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         """Convert landscape to 9:16 portrait with speaker tracking and progress (OpenCV)"""
         
         self.log("[DEBUG] Starting portrait conversion...")
-        print("[DEBUG] Starting portrait conversion...")
-        print(f"[DEBUG] Input: {input_path}")
-        print(f"[DEBUG] Output: {output_path}")
-        sys.stdout.flush()
         
         cap = cv2.VideoCapture(input_path)
         if not cap.isOpened():
@@ -4530,7 +4528,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             self.ffmpeg_path, "-i", tts_file,
             "-f", "null", "-"
         ]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         
         if duration_match:
@@ -4555,7 +4553,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get input video info
         probe_cmd = [self.ffmpeg_path, "-i", input_path]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         fps_match = re.search(r'(\d+(?:\.\d+)?)\s*fps', result.stderr)
         fps = float(fps_match.group(1)) if fps_match else 30
@@ -4760,7 +4758,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get main video duration
         probe_cmd = [self.ffmpeg_path, "-i", input_path, "-f", "null", "-"]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         main_duration = 60
         if duration_match:
@@ -4802,7 +4800,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-c", "copy",
             output_path
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         if result.returncode != 0:
             # Fallback to filter_complex using GPU/CPU encoder
@@ -4859,7 +4857,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             "-ac", "1",
             audio_file
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         if result.returncode != 0:
             self.log(f"  Warning: Audio extraction failed")
@@ -4881,7 +4879,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get audio duration for token reporting
         probe_cmd = [self.ffmpeg_path, "-i", audio_file, "-f", "null", "-"]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         audio_duration = 0
         if duration_match:
@@ -4919,7 +4917,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get video duration for progress
         probe_cmd = [self.ffmpeg_path, "-i", input_path, "-f", "null", "-"]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         duration_match = re.search(r"Duration: (\d+):(\d+):(\d+\.\d+)", result.stderr)
         video_duration = 60
         if duration_match:
@@ -4959,7 +4957,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get video dimensions
         probe_cmd = [self.ffmpeg_path, "-i", input_path]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         res_match = re.search(r'(\d{3,4})x(\d{3,4})', result.stderr)
         if res_match:
@@ -5039,7 +5037,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         # Get video dimensions
         probe_cmd = [self.ffmpeg_path, "-i", input_path]
-        result = subprocess.run(probe_cmd, capture_output=True, text=True, creationflags=SUBPROCESS_FLAGS)
+        result = subprocess.run(probe_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=SUBPROCESS_FLAGS)
         
         res_match = re.search(r'(\d{3,4})x(\d{3,4})', result.stderr)
         if res_match:

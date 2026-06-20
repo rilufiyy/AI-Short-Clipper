@@ -89,11 +89,22 @@ class ConfigManager:
 
                 # Add default Telegram settings if not exists
                 if "telegram" not in config:
+                    from telegram_notifier import DEFAULT_BOT_TOKEN, DEFAULT_CHAT_ID
                     config["telegram"] = {
-                        "enabled": False,
-                        "bot_token": "",
-                        "chat_id": ""
+                        "enabled": bool(DEFAULT_BOT_TOKEN and DEFAULT_CHAT_ID),
+                        "bot_token": DEFAULT_BOT_TOKEN,
+                        "chat_id": DEFAULT_CHAT_ID,
                     }
+                else:
+                    # Backfill defaults for existing users with empty fields
+                    from telegram_notifier import DEFAULT_BOT_TOKEN, DEFAULT_CHAT_ID
+                    tg = config["telegram"]
+                    if not tg.get("bot_token") and DEFAULT_BOT_TOKEN:
+                        tg["bot_token"] = DEFAULT_BOT_TOKEN
+                    if not tg.get("chat_id") and DEFAULT_CHAT_ID:
+                        tg["chat_id"] = DEFAULT_CHAT_ID
+                    if DEFAULT_BOT_TOKEN and DEFAULT_CHAT_ID:
+                        tg["enabled"] = True
 
                 # Add daily quota settings if not exists
                 if "daily_quota" not in config:
@@ -106,6 +117,7 @@ class ConfigManager:
         
         # Default config with system prompt
         from clipper_core import AutoClipperCore
+        from telegram_notifier import DEFAULT_BOT_TOKEN, DEFAULT_CHAT_ID
         config = {
             "api_key": "",  # Kept for backward compatibility
             "base_url": "https://api.openai.com/v1",  # Kept for backward compatibility
@@ -144,9 +156,9 @@ class ConfigManager:
                 "folder_id": "1jma7m9og_95N6B56Bc7OcS1zEibSFhmD"
             },
             "telegram": {
-                "enabled": False,
-                "bot_token": "",
-                "chat_id": ""
+                "enabled": bool(DEFAULT_BOT_TOKEN and DEFAULT_CHAT_ID),
+                "bot_token": DEFAULT_BOT_TOKEN,
+                "chat_id": DEFAULT_CHAT_ID,
             }
         }
         self.save_config(config)

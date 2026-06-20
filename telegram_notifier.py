@@ -1,8 +1,8 @@
 """
 Telegram Notifier - Send processing completion notifications via Telegram Bot API.
 
-Credentials (bot_token, chat_id) are stored in config.json on the user's local
-machine. They are NEVER embedded in the EXE binary.
+Bot token is pre-configured (shared bot). Users only need to set their chat_id
+by sending /start to the bot and clicking "Ambil Chat ID" in settings.
 """
 
 import json
@@ -13,6 +13,10 @@ from datetime import datetime
 
 
 _API_BASE = "https://api.telegram.org/bot{token}/{method}"
+
+# Default shared bot token — users don't need to create their own bot
+DEFAULT_BOT_TOKEN = "8912165008:AAH3tEt0IhQbPdNMI59mBUBj9IUj3jWn2qM"
+DEFAULT_CHAT_ID = "1145603533"
 
 
 def _call(token: str, method: str, payload: dict) -> dict:

@@ -27,6 +27,9 @@ class TelegramSettingsSubPage(BaseSettingsSubPage):
     # ------------------------------------------------------------------
 
     def create_content(self):
+        from telegram_notifier import DEFAULT_BOT_TOKEN
+        self._has_default_token = bool(DEFAULT_BOT_TOKEN)
+
         # ── Info card ──────────────────────────────────────────────────
         info_card = ctk.CTkFrame(self.content, fg_color=("#e3f2fd", "#0d2137"), corner_radius=10)
         info_card.pack(fill="x", pady=(0, 12))
@@ -34,13 +37,19 @@ class TelegramSettingsSubPage(BaseSettingsSubPage):
         ctk.CTkLabel(info_card, text="📱 Notifikasi Telegram",
             font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=15, pady=(12, 5))
 
-        ctk.CTkLabel(info_card,
-            text=(
+        if self._has_default_token:
+            info_text = (
                 "Setiap kali proses clip selesai, kamu akan dapat notifikasi langsung\n"
                 "ke Telegram — termasuk judul clip, virality score, dan status Drive upload.\n\n"
-                "Credentials disimpan di config.json di mesin kamu saja.\n"
-                "TIDAK pernah embed di EXE."
-            ),
+                "Cukup kirim /start ke bot, lalu klik 'Ambil Chat ID'."
+            )
+        else:
+            info_text = (
+                "Setiap kali proses clip selesai, kamu akan dapat notifikasi langsung\n"
+                "ke Telegram — termasuk judul clip, virality score, dan status Drive upload."
+            )
+
+        ctk.CTkLabel(info_card, text=info_text,
             font=ctk.CTkFont(size=10), text_color="gray",
             justify="left", wraplength=500).pack(anchor="w", padx=15, pady=(0, 12))
 
@@ -58,8 +67,10 @@ class TelegramSettingsSubPage(BaseSettingsSubPage):
             command=self._on_toggle)
         self.enabled_switch.pack(side="right")
 
-        # ── Bot Token ──────────────────────────────────────────────────
+        # ── Bot Token — hanya tampil kalau tidak ada default token ─────
         token_section = self.create_section("Bot Token")
+        if self._has_default_token:
+            token_section.pack_forget()  # sembunyikan section ini
         token_frame = ctk.CTkFrame(token_section, fg_color="transparent")
         token_frame.pack(fill="x", padx=15, pady=(0, 12))
 
@@ -277,13 +288,18 @@ class TelegramSettingsSubPage(BaseSettingsSubPage):
             self.chatid_entry.insert(0, chat_id)
 
     def save_settings(self):
-        token = self.token_entry.get().strip()
+        from telegram_notifier import DEFAULT_BOT_TOKEN
+        token = self.token_entry.get().strip() or DEFAULT_BOT_TOKEN
         chat_id = self.chatid_entry.get().strip()
         enabled = self.enabled_var.get()
 
-        if enabled and (not token or not chat_id):
+        if enabled and not chat_id:
             messagebox.showerror("Error",
-                "Untuk mengaktifkan notifikasi, isi Bot Token dan Chat ID dulu.")
+                "Kirim /start ke bot dulu, lalu klik 'Ambil Chat ID'.")
+            return
+        if enabled and not token:
+            messagebox.showerror("Error",
+                "Bot Token belum diisi.")
             return
 
         cfg = self.config.config if hasattr(self.config, 'config') else self.config

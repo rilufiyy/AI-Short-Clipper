@@ -1357,8 +1357,12 @@ class YTShortClipperApp(ctk.CTk):
             # Inject Google Drive settings
             core.gdrive_settings = self.config.get("gdrive", {})
 
+            import datetime as _dt
+            self._processing_start_time = _dt.datetime.now()
             core.process(url, num_clips, add_captions=add_captions, add_hook=add_hook)
             if not self.cancelled:
+                self._last_highlights = getattr(core, '_highlights', [])
+                self._last_video_info = getattr(core, 'source_video_info', {})
                 self.after(0, self.on_complete)
         except Exception as e:
             error_msg = str(e)
@@ -1904,12 +1908,35 @@ class YTShortClipperApp(ctk.CTk):
         increment(provider=provider, reset_hour=reset_hour)
         debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["processing"].on_complete()
-        
+
         # Reset back button to default (processing page)
         self.pages["results"].set_back_callback(self.pages["results"].default_back_callback)
-        
+
         # Load created clips in results page
         self.pages["results"].load_clips()
+
+        # Telegram notification (background, non-blocking)
+        def _notify():
+            try:
+                from telegram_notifier import is_configured, notify_clips_complete
+                cfg = self.config.config if hasattr(self.config, 'config') else {}
+                if not is_configured(cfg):
+                    return
+                highlights = getattr(self, '_last_highlights', [])
+                video_info = getattr(self, '_last_video_info', None) or (self.session_data or {}).get("video_info", {})
+                drive_ok = self.config.get("gdrive", {}).get("enabled", False)
+                start = getattr(self, '_processing_start_time', None)
+                session_dir = (self.session_data or {}).get("session_dir", "")
+                import os as _os
+                folder_name = _os.path.basename(session_dir) if session_dir else ""
+                ok = notify_clips_complete(cfg, highlights, video_info,
+                                          drive_uploaded=drive_ok, start_time=start,
+                                          output_folder=folder_name)
+                debug_log(f"[Telegram] notification {'sent ✓' if ok else 'failed (check bot_token/chat_id)'}")
+            except Exception as e:
+                debug_log(f"[Telegram] notification error: {e}")
+
+        threading.Thread(target=_notify, daemon=True).start()
     
     def on_clipping_complete(self):
         """Called when clipping completes successfully"""
@@ -1926,7 +1953,10 @@ class YTShortClipperApp(ctk.CTk):
             try:
                 from telegram_notifier import is_configured, notify_clips_complete
                 cfg = self.config.config if hasattr(self.config, 'config') else {}
+                tg = cfg.get("telegram", {})
+                debug_log(f"[Telegram] enabled={tg.get('enabled')} token={'set' if tg.get('bot_token') else 'missing'} chat_id={'set' if tg.get('chat_id') else 'missing'}")
                 if not is_configured(cfg):
+                    debug_log("[Telegram] not configured — skipping notification")
                     return
                 highlights = getattr(self, '_last_selected_highlights', [])
                 video_info = (self.session_data or {}).get("video_info", {})
@@ -1943,7 +1973,7 @@ class YTShortClipperApp(ctk.CTk):
                 debug_log(f"[Telegram] notification error: {e}")
 
         threading.Thread(target=_notify, daemon=True).start()
-    
+
     def on_clipping_error(self, error: str):
         """Called when clipping encounters an error"""
         self.processing = False
@@ -1954,10 +1984,14 @@ class YTShortClipperApp(ctk.CTk):
             try:
                 from telegram_notifier import is_configured, notify_error
                 cfg = self.config.config if hasattr(self.config, 'config') else {}
+                tg = cfg.get("telegram", {})
+                debug_log(f"[Telegram] enabled={tg.get('enabled')} token={'set' if tg.get('bot_token') else 'missing'} chat_id={'set' if tg.get('chat_id') else 'missing'}")
                 if not is_configured(cfg):
+                    debug_log("[Telegram] not configured — skipping error notification")
                     return
                 url = (self.session_data or {}).get("url", "")
-                notify_error(cfg, url, error)
+                ok = notify_error(cfg, url, error)
+                debug_log(f"[Telegram] error notification {'sent ✓' if ok else 'failed'}")
             except Exception as e:
                 debug_log(f"[Telegram] error notification failed: {e}")
 
@@ -1976,10 +2010,14 @@ class YTShortClipperApp(ctk.CTk):
             try:
                 from telegram_notifier import is_configured, notify_error
                 cfg = self.config.config if hasattr(self.config, 'config') else {}
+                tg = cfg.get("telegram", {})
+                debug_log(f"[Telegram] enabled={tg.get('enabled')} token={'set' if tg.get('bot_token') else 'missing'} chat_id={'set' if tg.get('chat_id') else 'missing'}")
                 if not is_configured(cfg):
+                    debug_log("[Telegram] not configured — skipping error notification")
                     return
                 url = (self.session_data or {}).get("url", "")
-                notify_error(cfg, url, error)
+                ok = notify_error(cfg, url, error)
+                debug_log(f"[Telegram] error notification {'sent ✓' if ok else 'failed'}")
             except Exception as e:
                 debug_log(f"[Telegram] error notification failed: {e}")
 

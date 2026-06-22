@@ -10,33 +10,28 @@ from tkinter import messagebox
 from pathlib import Path
 from PIL import Image
 
-from utils.preacher_options import PREACHER_OPTIONS
-
-
 class YouTubeUploadDialog(ctk.CTkToplevel):
     """Dialog for uploading video to YouTube with SEO metadata"""
-    
+
     def __init__(self, parent, clip: dict, openai_client, model: str,
-                 temperature: float = 1.0, preacher_name: str = ""):
+                 temperature: float = 1.0):
         super().__init__(parent)
         self.clip = clip
         self.openai_client = openai_client
         self.model = model
         self.temperature = temperature
         self.uploading = False
-        self._initial_preacher = preacher_name
-        
+
         self.title("Upload to YouTube")
         self.geometry("550x700")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
-        
+
         # Set icon
         self.set_dialog_icon()
-        
+
         self.create_ui()
-        self._apply_initial_preacher()
         self.generate_seo_metadata()
     
     def set_dialog_icon(self):
@@ -151,31 +146,6 @@ class YouTubeUploadDialog(ctk.CTkToplevel):
         ctk.CTkLabel(self.schedule_inputs, text="⚠️ Time in UTC timezone", 
             font=ctk.CTkFont(size=10), text_color="orange").pack(pady=(0, 5))
         
-        # Nama Penceramah
-        ctk.CTkLabel(scroll_frame, text="Nama Penceramah", anchor="w",
-            font=ctk.CTkFont(weight="bold")).pack(fill="x", pady=(15, 0))
-        ctk.CTkLabel(scroll_frame, text="Digunakan saat Generate SEO — pilih dari daftar atau ketik manual.",
-            anchor="w", font=ctk.CTkFont(size=9), text_color="gray").pack(fill="x")
-
-        preacher_row = ctk.CTkFrame(scroll_frame, fg_color="transparent")
-        preacher_row.pack(fill="x", pady=(5, 0))
-
-        self._preacher_var = ctk.StringVar(value=PREACHER_OPTIONS[0])
-        self._preacher_dropdown = ctk.CTkOptionMenu(
-            preacher_row,
-            values=PREACHER_OPTIONS,
-            variable=self._preacher_var,
-            command=self._on_preacher_select,
-            height=34,
-        )
-        self._preacher_dropdown.pack(side="left", padx=(0, 8))
-
-        self._preacher_entry = ctk.CTkEntry(
-            preacher_row,
-            placeholder_text="Ketik nama penceramah...",
-            height=34,
-        )
-
         # Generate button
         self.generate_btn = ctk.CTkButton(scroll_frame, text="🔄 Regenerate SEO",
             height=35, fg_color="gray", command=self.generate_seo_metadata)
@@ -199,32 +169,6 @@ class YouTubeUploadDialog(ctk.CTkToplevel):
         self.upload_btn = ctk.CTkButton(btn_frame, text="⬆️ Upload", height=45, 
             fg_color="#c4302b", hover_color="#ff0000", command=self.start_upload)
         self.upload_btn.pack(side="left", fill="x", expand=True, padx=(5, 0))
-
-    def _apply_initial_preacher(self):
-        name = self._initial_preacher.strip()
-        if not name:
-            return
-        if name in PREACHER_OPTIONS:
-            self._preacher_var.set(name)
-        else:
-            self._preacher_var.set("Lainnya...")
-            self._preacher_entry.pack(side="left", fill="x", expand=True)
-            self._preacher_entry.insert(0, name)
-
-    def _on_preacher_select(self, value):
-        if value == "Lainnya...":
-            self._preacher_entry.pack(side="left", fill="x", expand=True)
-            self._preacher_entry.focus_set()
-        else:
-            self._preacher_entry.pack_forget()
-
-    def _get_speaker_name(self) -> str:
-        val = self._preacher_var.get()
-        if val == "Lainnya...":
-            return self._preacher_entry.get().strip()
-        if val == PREACHER_OPTIONS[0]:
-            return self.clip.get("channel_name", "")
-        return val
 
     def toggle_schedule(self):
         """Show/hide schedule inputs"""
@@ -269,7 +213,7 @@ class YouTubeUploadDialog(ctk.CTkToplevel):
                     self.clip.get('hook_text', ''),
                     self.model,
                     self.temperature,
-                    channel_name=self._get_speaker_name()
+                    channel_name=self.clip.get("channel_name", "")
                 )
                 self.after(0, lambda: self.set_metadata(metadata))
             except Exception as e:

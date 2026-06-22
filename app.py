@@ -338,34 +338,6 @@ class YTShortClipperApp(ctk.CTk):
             button_hover_color=("#4a4a4a", "#3a3a3a"))
         self.clip_mode_dropdown.pack(fill="x")
 
-        # Nama Penceramah
-        ctk.CTkLabel(left_col, text="Nama Penceramah", font=ctk.CTkFont(size=11, weight="bold"),
-            anchor="w").pack(fill="x", pady=(8, 3))
-
-        preacher_row = ctk.CTkFrame(left_col, fg_color="transparent")
-        preacher_row.pack(fill="x", pady=(0, 5))
-
-        from utils.preacher_options import PREACHER_OPTIONS
-        self.preacher_var = ctk.StringVar(value=PREACHER_OPTIONS[0])
-        self.preacher_dropdown = ctk.CTkOptionMenu(
-            preacher_row,
-            values=PREACHER_OPTIONS,
-            variable=self.preacher_var,
-            command=self._on_preacher_select,
-            height=32,
-            fg_color=("#2b2b2b", "#1a1a1a"),
-            button_color=("#3a3a3a", "#2a2a2a"),
-            button_hover_color=("#4a4a4a", "#3a3a3a"),
-        )
-        self.preacher_dropdown.pack(side="left", padx=(0, 6), fill="x", expand=True)
-
-        self.preacher_entry = ctk.CTkEntry(
-            preacher_row,
-            placeholder_text="Ketik nama penceramah...",
-            height=32,
-        )
-        self.preacher_entry.bind("<KeyRelease>", lambda e: self._save_preacher_to_config())
-
         # Right column - Thumbnail 16:9
         right_col = ctk.CTkFrame(top_row, fg_color="transparent")
         right_col.grid(row=0, column=1, sticky="ne")
@@ -462,27 +434,6 @@ class YTShortClipperApp(ctk.CTk):
             font=ctk.CTkFont(size=12), text_color="gray", justify="center")
         self.thumb_label.pack()
     
-    def _save_preacher_to_config(self):
-        name = self.get_preacher_name()
-        self.config.config["_current_preacher"] = name
-
-    def _on_preacher_select(self, value):
-        if value == "Lainnya...":
-            self.preacher_entry.pack(side="left", fill="x", expand=True)
-            self.preacher_entry.focus_set()
-        else:
-            self.preacher_entry.pack_forget()
-            self._save_preacher_to_config()
-
-    def get_preacher_name(self) -> str:
-        val = self.preacher_var.get()
-        if val == "Lainnya...":
-            return self.preacher_entry.get().strip()
-        from utils.preacher_options import PREACHER_OPTIONS
-        if val == PREACHER_OPTIONS[0]:
-            return ""
-        return val
-
     def paste_url(self):
         """Paste URL from clipboard"""
         # Check if cookies exist first

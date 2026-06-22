@@ -11,15 +11,11 @@ from pathlib import Path
 from PIL import Image
 from datetime import datetime, timedelta
 
-from utils.preacher_options import PREACHER_OPTIONS
-
-
 class ReplizUploadDialog(ctk.CTkToplevel):
     """Dialog for selecting Repliz accounts and uploading video"""
-    
+
     def __init__(self, parent, clip_data: dict, access_key: str, secret_key: str,
-                 openai_client=None, model: str = "gpt-4.1", temperature: float = 1.0,
-                 preacher_name: str = ""):
+                 openai_client=None, model: str = "gpt-4.1", temperature: float = 1.0):
         super().__init__(parent)
 
         self.clip_data = clip_data
@@ -28,24 +24,22 @@ class ReplizUploadDialog(ctk.CTkToplevel):
         self.openai_client = openai_client
         self.model = model
         self.temperature = temperature
-        self._initial_preacher = preacher_name
         self.accounts = []
         self.selected_accounts = []
         self.account_checkboxes = []
         self.video_url = None
         self.uploading = False
-        
+
         # Window setup
         self.title("Upload via Repliz")
         self.geometry("600x750")
         self.resizable(False, False)
-        
+
         # Make modal
         self.transient(parent)
         self.grab_set()
-        
+
         self.create_ui()
-        self._apply_initial_preacher()
         self.load_accounts()
         
         # Set icon after window is created
@@ -132,32 +126,6 @@ class ReplizUploadDialog(ctk.CTkToplevel):
         self.desc_text.insert("1.0", "Generating SEO metadata...")
         self.desc_text.configure(state="disabled")
 
-        # Nama Penceramah
-        ctk.CTkLabel(metadata_frame, text="Nama Penceramah",
-            font=ctk.CTkFont(size=11, weight="bold"), anchor="w").pack(fill="x", padx=15)
-        ctk.CTkLabel(metadata_frame,
-            text="Digunakan saat Generate SEO — pilih dari daftar atau ketik manual.",
-            anchor="w", font=ctk.CTkFont(size=9), text_color="gray").pack(fill="x", padx=15)
-
-        preacher_row = ctk.CTkFrame(metadata_frame, fg_color="transparent")
-        preacher_row.pack(fill="x", padx=15, pady=(5, 12))
-
-        self._preacher_var = ctk.StringVar(value=PREACHER_OPTIONS[0])
-        self._preacher_dropdown = ctk.CTkOptionMenu(
-            preacher_row,
-            values=PREACHER_OPTIONS,
-            variable=self._preacher_var,
-            command=self._on_preacher_select,
-            height=34,
-        )
-        self._preacher_dropdown.pack(side="left", padx=(0, 8))
-
-        self._preacher_entry = ctk.CTkEntry(
-            preacher_row,
-            placeholder_text="Ketik nama penceramah...",
-            height=34,
-        )
-        
         # Schedule section
         schedule_frame = ctk.CTkFrame(main_scroll, fg_color=("gray90", "gray17"), corner_radius=10)
         schedule_frame.pack(fill="x", pady=(0, 15))
@@ -241,31 +209,6 @@ class ReplizUploadDialog(ctk.CTkToplevel):
         if self.openai_client:
             self.generate_metadata()
 
-    def _apply_initial_preacher(self):
-        name = self._initial_preacher.strip()
-        if not name:
-            return
-        if name in PREACHER_OPTIONS:
-            self._preacher_var.set(name)
-        else:
-            self._preacher_var.set("Lainnya...")
-            self._preacher_entry.pack(side="left", fill="x", expand=True)
-            self._preacher_entry.insert(0, name)
-
-    def _on_preacher_select(self, value):
-        if value == "Lainnya...":
-            self._preacher_entry.pack(side="left", fill="x", expand=True)
-            self._preacher_entry.focus_set()
-        else:
-            self._preacher_entry.pack_forget()
-
-    def _get_speaker_name(self) -> str:
-        val = self._preacher_var.get()
-        if val == "Lainnya...":
-            return self._preacher_entry.get().strip()
-        if val == PREACHER_OPTIONS[0]:
-            return self.clip_data.get("channel_name", "")
-        return val
 
     def generate_metadata(self):
         """Generate title and description using AI"""
@@ -273,7 +216,7 @@ class ReplizUploadDialog(ctk.CTkToplevel):
             try:
                 hook = self.clip_data.get("hook_text", "")
                 title = self.clip_data.get("title", "")
-                channel = self._get_speaker_name()
+                channel = self.clip_data.get("channel_name", "")
                 channel_line = f"Channel / Speaker: {channel}" if channel else ""
 
                 prompt = f"""Generate a catchy social media post title and description for this short video clip.

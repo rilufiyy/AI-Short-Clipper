@@ -213,6 +213,7 @@ class YTShortClipperApp(ctk.CTk):
         # Reset subtitle state (keep visible but disabled)
         self.subtitle_loaded = False
         self.subtitle_loading.pack_forget()
+        self._all_subtitles = []
         self.subtitle_dropdown.configure(state="disabled", values=["id - Indonesian"])
         self.subtitle_var.set("id - Indonesian")
         
@@ -297,14 +298,23 @@ class YTShortClipperApp(ctk.CTk):
         self.subtitle_frame = ctk.CTkFrame(left_col, fg_color="transparent")
         self.subtitle_frame.pack(fill="x", pady=(0, 8))
         self.subtitle_loaded = False
-        
+        self._all_subtitles = []
+
         self.subtitle_var = ctk.StringVar(value="id - Indonesian")
-        self.subtitle_dropdown = ctk.CTkOptionMenu(self.subtitle_frame,
-            variable=self.subtitle_var, values=["id - Indonesian"],
-            height=32, fg_color=("#2b2b2b", "#1a1a1a"),
-            button_color=("#3a3a3a", "#2a2a2a"), button_hover_color=("#4a4a4a", "#3a3a3a"),
-            state="disabled")
+        self.subtitle_dropdown = ctk.CTkComboBox(
+            self.subtitle_frame,
+            variable=self.subtitle_var,
+            values=["id - Indonesian"],
+            height=32,
+            fg_color=("#2b2b2b", "#1a1a1a"),
+            border_color=("#3a3a3a", "#2a2a2a"),
+            button_color=("#3a3a3a", "#2a2a2a"),
+            button_hover_color=("#4a4a4a", "#3a3a3a"),
+            state="disabled",
+            command=lambda v: self.subtitle_var.set(v),
+        )
         self.subtitle_dropdown.pack(fill="x")
+        self.subtitle_dropdown.bind("<KeyRelease>", self._filter_subtitles)
         
         self.subtitle_loading = ctk.CTkLabel(self.subtitle_frame, text="⏳ Loading...", 
             font=ctk.CTkFont(size=10), text_color="gray")
@@ -956,28 +966,31 @@ class YTShortClipperApp(ctk.CTk):
         # Update button state
         self.update_start_button_state()
     
+    def _filter_subtitles(self, event=None):
+        """Filter subtitle dropdown based on typed text"""
+        if not self._all_subtitles:
+            return
+        typed = self.subtitle_dropdown.get().lower()
+        filtered = [s for s in self._all_subtitles if typed in s.lower()] or self._all_subtitles
+        self.subtitle_dropdown.configure(values=filtered)
+
     def show_subtitle_selector(self, subtitles: list):
         """Show subtitle selector with available options"""
-        # Hide loading
         self.subtitle_loading.pack_forget()
-        
-        # Create dropdown options
+
         options = [f"{sub['code']} - {sub['name']}" for sub in subtitles]
-        
-        # Set default to Indonesian if available, otherwise first option
+        self._all_subtitles = options
+
+        # Default ke Indonesian kalau ada, fallback ke opsi pertama
         default_value = options[0]
         for opt in options:
             if opt.startswith("id "):
                 default_value = opt
                 break
-        
+
         self.subtitle_var.set(default_value)
         self.subtitle_dropdown.configure(values=options, state="normal")
-        
-        # Mark subtitles as loaded
         self.subtitle_loaded = True
-        
-        # Update start button state (subtitles loaded successfully)
         self.update_start_button_state()
     
     def show_no_subtitle_fallback(self):

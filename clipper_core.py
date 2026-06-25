@@ -1278,6 +1278,10 @@ Transcript:
         lang_names = {
             "en": "English",
             "id": "Indonesian",
+            "ms": "Malay",
+            "my": "Burmese (Myanmar)",
+            "th": "Thai",
+            "vi": "Vietnamese",
             "es": "Spanish",
             "fr": "French",
             "de": "German",
@@ -1292,8 +1296,6 @@ Transcript:
             "nl": "Dutch",
             "pl": "Polish",
             "tr": "Turkish",
-            "vi": "Vietnamese",
-            "th": "Thai",
         }
         
         # Check if using yt-dlp module

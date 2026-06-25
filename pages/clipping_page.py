@@ -8,14 +8,16 @@ from utils.logger import get_error_log_path
 
 class ClippingPage(ctk.CTkFrame):
     """Clipping page - shows progress during video clipping"""
-    
-    def __init__(self, parent, on_cancel_callback, on_back_callback, on_open_output_callback, on_browse_callback):
+
+    def __init__(self, parent, on_cancel_callback, on_back_callback, on_open_output_callback,
+                 on_browse_callback, on_save_to_drive_callback=None):
         super().__init__(parent)
         self.on_cancel = on_cancel_callback
         self.on_back = on_back_callback
         self.on_open_output = on_open_output_callback
         self.on_browse = on_browse_callback
-        
+        self.on_save_to_drive = on_save_to_drive_callback
+
         self.create_ui()
     
     def open_github(self):
@@ -97,10 +99,21 @@ class ClippingPage(ctk.CTkFrame):
         
         self.open_btn = ctk.CTkButton(row2, text="📂 Open Output", height=45, state="disabled", command=self.on_open_output)
         self.open_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        self.results_btn = ctk.CTkButton(row2, text="📂 Browse Sessions", height=45, state="disabled", 
+
+        self.results_btn = ctk.CTkButton(row2, text="📂 Browse Sessions", height=45, state="disabled",
             fg_color="#27ae60", hover_color="#2ecc71", command=self.on_browse)
         self.results_btn.pack(side="left", fill="x", expand=True, padx=(5, 0))
+
+        # Row 3 — Save to Drive (hidden until complete)
+        self.drive_row = ctk.CTkFrame(btn_frame, fg_color="transparent")
+        self.drive_btn = ctk.CTkButton(
+            self.drive_row, text="☁️ Save to Drive", height=45,
+            fg_color="#1a73e8", hover_color="#1558b0",
+            command=self._on_save_to_drive,
+        )
+        self.drive_btn.pack(fill="x")
+        self.drive_status = ctk.CTkLabel(self.drive_row, text="", font=ctk.CTkFont(size=10), text_color="gray")
+        self.drive_status.pack()
         
         # Footer
         footer = PageFooter(self, self)
@@ -132,6 +145,20 @@ class ClippingPage(ctk.CTkFrame):
         """Update status label"""
         self.status_label.configure(text=msg)
     
+    def _on_save_to_drive(self):
+        if self.on_save_to_drive:
+            self.drive_btn.configure(state="disabled", text="☁️ Uploading...")
+            self.drive_status.configure(text="")
+            self.on_save_to_drive(self._drive_upload_done)
+
+    def _drive_upload_done(self, success: bool, msg: str = ""):
+        if success:
+            self.drive_btn.configure(text="☁️ Uploaded ✓", state="disabled", fg_color="#27ae60")
+            self.drive_status.configure(text=msg or "Upload selesai", text_color="#27ae60")
+        else:
+            self.drive_btn.configure(state="normal", text="☁️ Save to Drive")
+            self.drive_status.configure(text=msg or "Upload gagal — coba lagi", text_color="red")
+
     def on_complete(self):
         """Called when clipping completes successfully"""
         self.status_label.configure(text="✅ All clips created successfully!")
@@ -140,6 +167,9 @@ class ClippingPage(ctk.CTkFrame):
         self.back_btn.configure(state="normal")
         self.results_btn.configure(state="normal")
         self.current_clip_label.configure(text="✓ Complete")
+        # Tampilkan tombol Save to Drive kalau callback tersedia
+        if self.on_save_to_drive:
+            self.drive_row.pack(fill="x", pady=(8, 0))
     
     def on_cancelled(self):
         """Called when clipping is cancelled"""

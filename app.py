@@ -599,8 +599,50 @@ class YTShortClipperApp(ctk.CTk):
             self.cancel_processing,
             lambda: self.show_page("home"),
             self.open_output,
-            lambda: self.show_page("session_browser")
+            lambda: self.show_page("session_browser"),
+            on_save_to_drive_callback=self.save_session_to_drive,
         )
+
+    def save_session_to_drive(self, done_callback):
+        """Upload semua clips dari session terakhir ke Google Drive (background)."""
+        def _run():
+            try:
+                from gdrive_uploader import GDriveUploader
+                from pathlib import Path
+                gdrive_cfg = self.config.get("gdrive", {})
+                root_folder_id = gdrive_cfg.get("folder_id", "")
+                session_dir = (self.session_data or {}).get("session_dir", "")
+                if not session_dir:
+                    self.after(0, lambda: done_callback(False, "Session dir tidak ditemukan"))
+                    return
+                clips_dir = Path(session_dir) / "clips"
+                if not clips_dir.exists():
+                    clips_dir = Path(session_dir)
+                uploader = GDriveUploader(log_callback=debug_log)
+                if not uploader.is_authenticated():
+                    self.after(0, lambda: done_callback(False, "rclone belum ter-auth ke Google Drive"))
+                    return
+                video_info = (self.session_data or {}).get("video_info", {})
+                yt_title = video_info.get("title", Path(session_dir).name)
+                session_path = uploader.create_session_folder(root_folder_id, yt_title)
+                clip_folders = sorted([f for f in clips_dir.iterdir() if f.is_dir()])
+                if not clip_folders:
+                    # Flat structure — upload seluruh clips_dir sebagai satu folder
+                    uploader.upload_clip_folder(clips_dir, session_path, root_folder_id=root_folder_id)
+                else:
+                    for i, clip_folder in enumerate(clip_folders, 1):
+                        uploader.upload_clip_folder(
+                            clip_folder, session_path,
+                            clip_index=i, clip_title=clip_folder.name,
+                            root_folder_id=root_folder_id,
+                        )
+                self.after(0, lambda: done_callback(True, f"Uploaded ke Drive: {session_path}"))
+            except Exception as e:
+                msg = str(e)
+                debug_log(f"[Drive] Manual upload error: {msg}")
+                self.after(0, lambda: done_callback(False, msg[:80]))
+
+        threading.Thread(target=_run, daemon=True).start()
     
     def create_highlight_selection_page(self):
         """Create highlight selection page as embedded frame"""

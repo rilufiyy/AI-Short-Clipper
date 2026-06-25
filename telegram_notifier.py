@@ -18,7 +18,6 @@ _API_BASE = "https://api.telegram.org/bot{token}/{method}"
 DEFAULT_BOT_TOKEN = "891xxx"
 DEFAULT_CHAT_ID = "1xxxx"
 
-
 def _call(token: str, method: str, payload: dict) -> dict:
     """Make a Telegram Bot API call. Returns parsed JSON response."""
     url = _API_BASE.format(token=token, method=method)

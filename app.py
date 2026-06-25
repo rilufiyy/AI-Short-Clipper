@@ -213,6 +213,7 @@ class YTShortClipperApp(ctk.CTk):
         # Reset subtitle state (keep visible but disabled)
         self.subtitle_loaded = False
         self.subtitle_loading.pack_forget()
+        self._all_subtitles = []
         self.subtitle_dropdown.configure(state="disabled", values=["id - Indonesian"])
         self.subtitle_var.set("id - Indonesian")
         
@@ -297,14 +298,23 @@ class YTShortClipperApp(ctk.CTk):
         self.subtitle_frame = ctk.CTkFrame(left_col, fg_color="transparent")
         self.subtitle_frame.pack(fill="x", pady=(0, 8))
         self.subtitle_loaded = False
-        
+        self._all_subtitles = []
+
         self.subtitle_var = ctk.StringVar(value="id - Indonesian")
-        self.subtitle_dropdown = ctk.CTkOptionMenu(self.subtitle_frame,
-            variable=self.subtitle_var, values=["id - Indonesian"],
-            height=32, fg_color=("#2b2b2b", "#1a1a1a"),
-            button_color=("#3a3a3a", "#2a2a2a"), button_hover_color=("#4a4a4a", "#3a3a3a"),
-            state="disabled")
+        self.subtitle_dropdown = ctk.CTkComboBox(
+            self.subtitle_frame,
+            variable=self.subtitle_var,
+            values=["id - Indonesian"],
+            height=32,
+            fg_color=("#2b2b2b", "#1a1a1a"),
+            border_color=("#3a3a3a", "#2a2a2a"),
+            button_color=("#3a3a3a", "#2a2a2a"),
+            button_hover_color=("#4a4a4a", "#3a3a3a"),
+            state="disabled",
+            command=lambda v: self.subtitle_var.set(v),
+        )
         self.subtitle_dropdown.pack(fill="x")
+        self.subtitle_dropdown.bind("<KeyRelease>", self._filter_subtitles)
         
         self.subtitle_loading = ctk.CTkLabel(self.subtitle_frame, text="⏳ Loading...", 
             font=ctk.CTkFont(size=10), text_color="gray")
@@ -337,34 +347,6 @@ class YTShortClipperApp(ctk.CTk):
             button_color=("#3a3a3a", "#2a2a2a"),
             button_hover_color=("#4a4a4a", "#3a3a3a"))
         self.clip_mode_dropdown.pack(fill="x")
-
-        # Nama Penceramah
-        ctk.CTkLabel(left_col, text="Nama Penceramah", font=ctk.CTkFont(size=11, weight="bold"),
-            anchor="w").pack(fill="x", pady=(8, 3))
-
-        preacher_row = ctk.CTkFrame(left_col, fg_color="transparent")
-        preacher_row.pack(fill="x", pady=(0, 5))
-
-        from utils.preacher_options import PREACHER_OPTIONS
-        self.preacher_var = ctk.StringVar(value=PREACHER_OPTIONS[0])
-        self.preacher_dropdown = ctk.CTkOptionMenu(
-            preacher_row,
-            values=PREACHER_OPTIONS,
-            variable=self.preacher_var,
-            command=self._on_preacher_select,
-            height=32,
-            fg_color=("#2b2b2b", "#1a1a1a"),
-            button_color=("#3a3a3a", "#2a2a2a"),
-            button_hover_color=("#4a4a4a", "#3a3a3a"),
-        )
-        self.preacher_dropdown.pack(side="left", padx=(0, 6), fill="x", expand=True)
-
-        self.preacher_entry = ctk.CTkEntry(
-            preacher_row,
-            placeholder_text="Ketik nama penceramah...",
-            height=32,
-        )
-        self.preacher_entry.bind("<KeyRelease>", lambda e: self._save_preacher_to_config())
 
         # Right column - Thumbnail 16:9
         right_col = ctk.CTkFrame(top_row, fg_color="transparent")
@@ -462,27 +444,6 @@ class YTShortClipperApp(ctk.CTk):
             font=ctk.CTkFont(size=12), text_color="gray", justify="center")
         self.thumb_label.pack()
     
-    def _save_preacher_to_config(self):
-        name = self.get_preacher_name()
-        self.config.config["_current_preacher"] = name
-
-    def _on_preacher_select(self, value):
-        if value == "Lainnya...":
-            self.preacher_entry.pack(side="left", fill="x", expand=True)
-            self.preacher_entry.focus_set()
-        else:
-            self.preacher_entry.pack_forget()
-            self._save_preacher_to_config()
-
-    def get_preacher_name(self) -> str:
-        val = self.preacher_var.get()
-        if val == "Lainnya...":
-            return self.preacher_entry.get().strip()
-        from utils.preacher_options import PREACHER_OPTIONS
-        if val == PREACHER_OPTIONS[0]:
-            return ""
-        return val
-
     def paste_url(self):
         """Paste URL from clipboard"""
         # Check if cookies exist first
@@ -1005,28 +966,31 @@ class YTShortClipperApp(ctk.CTk):
         # Update button state
         self.update_start_button_state()
     
+    def _filter_subtitles(self, event=None):
+        """Filter subtitle dropdown based on typed text"""
+        if not self._all_subtitles:
+            return
+        typed = self.subtitle_dropdown.get().lower()
+        filtered = [s for s in self._all_subtitles if typed in s.lower()] or self._all_subtitles
+        self.subtitle_dropdown.configure(values=filtered)
+
     def show_subtitle_selector(self, subtitles: list):
         """Show subtitle selector with available options"""
-        # Hide loading
         self.subtitle_loading.pack_forget()
-        
-        # Create dropdown options
+
         options = [f"{sub['code']} - {sub['name']}" for sub in subtitles]
-        
-        # Set default to Indonesian if available, otherwise first option
+        self._all_subtitles = options
+
+        # Default ke Indonesian kalau ada, fallback ke opsi pertama
         default_value = options[0]
         for opt in options:
             if opt.startswith("id "):
                 default_value = opt
                 break
-        
+
         self.subtitle_var.set(default_value)
         self.subtitle_dropdown.configure(values=options, state="normal")
-        
-        # Mark subtitles as loaded
         self.subtitle_loaded = True
-        
-        # Update start button state (subtitles loaded successfully)
         self.update_start_button_state()
     
     def show_no_subtitle_fallback(self):

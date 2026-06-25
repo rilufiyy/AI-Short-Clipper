@@ -77,11 +77,13 @@ class GDriveUploader:
         """
         now = datetime.now()
         year = now.strftime("%Y")
-        month = now.strftime("%m")
+        month_names = ["Januari","Februari","Maret","April","Mei","Juni",
+                       "Juli","Agustus","September","Oktober","November","Desember"]
+        month = month_names[now.month - 1]
         day = now.strftime("%d")
         clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', yt_title).strip()
-        clean = re.sub(r'[\s_]+', '-', clean).strip('-')[:80] or "kajian"
-        folder_path = f"AI Clipper/{year}/{month}/{day}/{clean}"
+        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80] or "video"
+        folder_path = f"AI YT Clipper/{year}/{month}/{day}/{clean}"
         self.log(f"  [Drive] Session folder: {folder_path}")
         return folder_path
 

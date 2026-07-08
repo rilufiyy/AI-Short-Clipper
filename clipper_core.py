@@ -208,6 +208,22 @@ class AutoClipperCore:
         self.temp_dir = self.output_dir / "_temp"
         self.temp_dir.mkdir(parents=True, exist_ok=True)
     
+    def _make_session_dir(self, video_title: str = "") -> Path:
+        """Create session directory: sessions/YYYY/MonthID/DD/VideoTitle/"""
+        _month_id = ["Januari","Februari","Maret","April","Mei","Juni",
+                     "Juli","Agustus","September","Oktober","November","Desember"]
+        now = datetime.now()
+        year = now.strftime("%Y")
+        month = _month_id[now.month - 1]
+        day = now.strftime("%d")
+        clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', video_title)
+        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80] or "video"
+        base = self.output_dir / "sessions" / year / month / day / clean
+        if base.exists():
+            base = base.parent / f"{clean} ({now.strftime('%H%M%S')})"
+        base.mkdir(parents=True, exist_ok=True)
+        return base
+
     def enable_gpu_acceleration(self, enabled: bool = True):
         """Enable or disable GPU acceleration for video encoding"""
         self.gpu_enabled = enabled
@@ -2441,18 +2457,16 @@ Transcript:
         """
         from datetime import datetime
         
-        # Use existing session_dir or create new one
+        # Use existing session_dir or create new one with video title
         if session_dir:
             session_dir = Path(session_dir)
         else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            session_dir = self.output_dir / "sessions" / timestamp
-            session_dir.mkdir(parents=True, exist_ok=True)
-        
+            session_dir = self._make_session_dir((video_info or {}).get("title", ""))
+
         # Update temp_dir to session-specific temp
         self.temp_dir = session_dir / "_temp"
         self.temp_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Step 1: Transcribe with Whisper
         self.set_progress("Transcribing video with AI...", 0.3)
         transcript = self.transcribe_full_video(video_path)
@@ -5165,21 +5179,15 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Store source URL for metadata
         self.source_url = url
 
-        # Create session directory with timestamp
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_dir = self.output_dir / "sessions" / timestamp
-        session_dir.mkdir(parents=True, exist_ok=True)
-
-        # Update temp_dir to session-specific temp
-        self.temp_dir = session_dir / "_temp"
-        self.temp_dir.mkdir(parents=True, exist_ok=True)
-
-        self.log(f"Session directory: {session_dir}")
-
-        # Step 1: Download subtitle only (no video!)
+        # Step 1: Download subtitle only (no video!) — create session_dir after we have title
         self.set_progress("Downloading subtitle...", 0.1)
         srt_path, video_info = self.download_subtitle_only(url)
+
+        # Create session directory using video title (now available)
+        session_dir = self._make_session_dir((video_info or {}).get("title", ""))
+        self.temp_dir = session_dir / "_temp"
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
+        self.log(f"Session directory: {session_dir}")
 
         # Store channel name and source video info for metadata
         self.channel_name = video_info.get("channel", "") if video_info else ""
@@ -5321,7 +5329,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
             # Step B: Process the downloaded section
             # Create clip folder only after download succeeds (avoids empty dirs on failure)
-            clip_folder = clips_dir / f"clip_{i:03d}"
+            _ct = highlight.get("title", "")
+            _cslug = re.sub(r'[<>:"/\\|?*\n\r\t]', '', _ct)
+            _cslug = re.sub(r'[\s_]+', ' ', _cslug).strip()[:50]
+            _cname = f"clip_{i:03d}" + (f" - {_cslug}" if _cslug else "")
+            clip_folder = clips_dir / _cname
             clip_folder.mkdir(parents=True, exist_ok=True)
 
             try:

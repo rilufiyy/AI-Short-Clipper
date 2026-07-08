@@ -1835,12 +1835,17 @@ class YTShortClipperApp(ctk.CTk):
         clips_dir = session_dir / "clips"
         clips_dir.mkdir(parents=True, exist_ok=True)
         
+        import re as _re
         total_clips = len(selected_highlights)
         for i, highlight in enumerate(selected_highlights, 1):
             if self.cancelled:
                 return
 
-            clip_folder = clips_dir / f"clip_{i:03d}"
+            _ct = highlight.get("title", "")
+            _cslug = _re.sub(r'[<>:"/\\|?*\n\r\t]', '', _ct)
+            _cslug = _re.sub(r'[\s_]+', ' ', _cslug).strip()[:50]
+            _cname = f"clip_{i:03d}" + (f" - {_cslug}" if _cslug else "")
+            clip_folder = clips_dir / _cname
             clip_folder.mkdir(parents=True, exist_ok=True)
 
             try:

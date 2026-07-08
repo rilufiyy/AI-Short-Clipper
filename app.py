@@ -626,14 +626,18 @@ class YTShortClipperApp(ctk.CTk):
                 yt_title = video_info.get("title", Path(session_dir).name)
                 session_path = uploader.create_session_folder(root_folder_id, yt_title)
                 clip_folders = sorted([f for f in clips_dir.iterdir() if f.is_dir()])
+                # Build title map from selected highlights (index → title)
+                selected = getattr(self, "_last_selected_highlights", []) or []
+                title_map = {i + 1: h.get("title", "") for i, h in enumerate(selected)}
                 if not clip_folders:
                     # Flat structure — upload seluruh clips_dir sebagai satu folder
                     uploader.upload_clip_folder(clips_dir, session_path, root_folder_id=root_folder_id)
                 else:
                     for i, clip_folder in enumerate(clip_folders, 1):
+                        clip_title = title_map.get(i) or clip_folder.name
                         uploader.upload_clip_folder(
                             clip_folder, session_path,
-                            clip_index=i, clip_title=clip_folder.name,
+                            clip_index=i, clip_title=clip_title,
                             root_folder_id=root_folder_id,
                         )
                 self.after(0, lambda: done_callback(True, f"Uploaded ke Drive: {session_path}"))

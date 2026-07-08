@@ -116,7 +116,7 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='YTShortClipper',
+    name='AIShortClipper_v2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

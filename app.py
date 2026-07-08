@@ -587,7 +587,7 @@ class YTShortClipperApp(ctk.CTk):
             self.cancel_processing,
             lambda: self.show_page("home"),
             self.open_output,
-            self.show_browse_after_complete
+            self.show_browse_after_complete,
         )
         # Keep reference to steps for update_progress
         self.steps = self.pages["processing"].steps
@@ -1835,19 +1835,22 @@ class YTShortClipperApp(ctk.CTk):
         for i, highlight in enumerate(selected_highlights, 1):
             if self.cancelled:
                 return
-            
+
             clip_folder = clips_dir / f"clip_{i:03d}"
             clip_folder.mkdir(parents=True, exist_ok=True)
-            
-            original_output_dir = core.output_dir
-            core.output_dir = clip_folder.parent
-            
+
             try:
                 core.process_clip(video_path, highlight, i, total_clips,
                                 add_captions=self.add_captions, add_hook=self.add_hook,
-                                pre_cut=False)
-            finally:
-                core.output_dir = original_output_dir
+                                pre_cut=False, output_folder=clip_folder)
+            except Exception:
+                try:
+                    import shutil as _shutil
+                    if clip_folder.exists():
+                        _shutil.rmtree(clip_folder, ignore_errors=True)
+                except Exception:
+                    pass
+                raise
         
         core.set_progress("Cleaning up...", 0.95)
         core.cleanup()

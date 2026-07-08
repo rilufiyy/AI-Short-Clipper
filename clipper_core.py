@@ -2662,9 +2662,9 @@ Transcript:
         
         return valid[:num_clips]
     
-    def process_clip(self, video_path: str, highlight: dict, index: int, total_clips: int = 1, add_captions: bool = True, add_hook: bool = True, pre_cut: bool = False):
+    def process_clip(self, video_path: str, highlight: dict, index: int, total_clips: int = 1, add_captions: bool = True, add_hook: bool = True, pre_cut: bool = False, output_folder=None):
         """Process a single clip: cut, portrait, hook (optional), captions (optional)
-        
+
         Args:
             video_path: Path to source video (full video or pre-cut section)
             highlight: Highlight dict with metadata
@@ -2673,31 +2673,34 @@ Transcript:
             add_captions: Whether to add captions
             add_hook: Whether to add hook
             pre_cut: If True, video_path is already a pre-cut section (skip cutting step)
+            output_folder: If provided, use this exact folder for output (skip date-nesting)
         """
-        
+
         # Check cancel before starting
         if self.is_cancelled():
             return
-        
-        # Create output folder: output/YYYY/MM/DD/nama-kajian/clipNN-title-slug
+
+        # Create output folder
         _title_raw = highlight.get("title", "")
         _slug = re.sub(r"[^\w\s-]", "", _title_raw.lower())
         _slug = re.sub(r"[\s_]+", "-", _slug).strip("-")[:40]
         _now = datetime.now()
 
-        _src_title = self.source_video_info.get("title", "") if self.source_video_info else ""
-        _kajian_slug = re.sub(r"[^\w\s-]", "", _src_title)
-        _kajian_slug = re.sub(r"[\s_]+", "-", _kajian_slug).strip("-")[:60] or "kajian"
-
-        folder_name = f"clip{index:02d}" + (f"-{_slug}" if _slug else "")
-        clip_dir = (
-            self.output_dir
-            / _now.strftime("%Y")
-            / _now.strftime("%m")
-            / _now.strftime("%d")
-            / _kajian_slug
-            / folder_name
-        )
+        if output_folder is not None:
+            clip_dir = Path(output_folder)
+        else:
+            _src_title = self.source_video_info.get("title", "") if self.source_video_info else ""
+            _kajian_slug = re.sub(r"[^\w\s-]", "", _src_title)
+            _kajian_slug = re.sub(r"[\s_]+", "-", _kajian_slug).strip("-")[:60] or "kajian"
+            folder_name = f"clip{index:02d}" + (f"-{_slug}" if _slug else "")
+            clip_dir = (
+                self.output_dir
+                / _now.strftime("%Y")
+                / _now.strftime("%m")
+                / _now.strftime("%d")
+                / _kajian_slug
+                / folder_name
+            )
         clip_dir.mkdir(parents=True, exist_ok=True)
 
         self.log(f"  Output folder: {clip_dir}")
@@ -5312,23 +5315,26 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 )
             
             # Step B: Process the downloaded section
-            # Create clip-specific folder
+            # Create clip folder only after download succeeds (avoids empty dirs on failure)
             clip_folder = clips_dir / f"clip_{i:03d}"
             clip_folder.mkdir(parents=True, exist_ok=True)
-            
-            # Temporarily override output_dir for this clip
-            original_output_dir = self.output_dir
-            self.output_dir = clip_folder.parent
-            
+
             try:
-                # Pass pre_cut=True since we downloaded the section already
-                self.process_clip(video_path, highlight, i, total_clips, 
+                # Pass output_folder so process_clip writes directly into clip_folder
+                # without creating date-nested subdirectories
+                self.process_clip(video_path, highlight, i, total_clips,
                                 add_captions=add_captions, add_hook=add_hook,
-                                pre_cut=True)
-            finally:
-                # Restore original output_dir
-                self.output_dir = original_output_dir
-            
+                                pre_cut=True, output_folder=clip_folder)
+            except Exception:
+                # Clean up empty/partial folder if processing failed
+                try:
+                    import shutil as _shutil
+                    if clip_folder.exists():
+                        _shutil.rmtree(clip_folder, ignore_errors=True)
+                except Exception:
+                    pass
+                raise
+
             # Clean up section file after processing
             try:
                 if Path(video_path).exists():

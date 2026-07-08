@@ -15,8 +15,8 @@ from datetime import datetime
 _API_BASE = "https://api.telegram.org/bot{token}/{method}"
 
 # Default shared bot token — users don't need to create their own bot
-DEFAULT_BOT_TOKEN = "891xxx"
-DEFAULT_CHAT_ID = "1xxxx"
+DEFAULT_BOT_TOKEN = "8867237625:AAHjBLlitlcz21U8kwcdJmbju3USbG1QiPI"
+DEFAULT_CHAT_ID = "1145603533"
 
 
 def _call(token: str, method: str, payload: dict) -> dict:

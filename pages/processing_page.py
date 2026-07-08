@@ -9,14 +9,16 @@ from utils.logger import get_error_log_path
 
 class ProcessingPage(ctk.CTkFrame):
     """Processing page - shows progress during video processing"""
-    
-    def __init__(self, parent, on_cancel_callback, on_back_callback, on_open_output_callback, on_browse_callback):
+
+    def __init__(self, parent, on_cancel_callback, on_back_callback, on_open_output_callback,
+                 on_browse_callback, on_save_to_drive_callback=None):
         super().__init__(parent)
         self.on_cancel = on_cancel_callback
         self.on_back = on_back_callback
         self.on_open_output = on_open_output_callback
         self.on_browse = on_browse_callback
-        
+        self.on_save_to_drive = on_save_to_drive_callback
+
         self.create_ui()
     
     def open_github(self):
@@ -95,8 +97,8 @@ class ProcessingPage(ctk.CTkFrame):
         
         self.open_btn = ctk.CTkButton(row2, text="📂 Open Output", height=45, state="disabled", command=self.on_open_output)
         self.open_btn.pack(side="left", fill="x", expand=True, padx=(0, 5))
-        
-        self.results_btn = ctk.CTkButton(row2, text="📂 Browse Videos", height=45, state="disabled", 
+
+        self.results_btn = ctk.CTkButton(row2, text="📂 Browse Videos", height=45, state="disabled",
             fg_color="#27ae60", hover_color="#2ecc71", command=self.on_browse)
         self.results_btn.pack(side="left", fill="x", expand=True, padx=(5, 0))
         

@@ -145,7 +145,7 @@ class GDriveUploader:
 
         result = subprocess.run(
             cmd, capture_output=True, text=True,
-            timeout=300, creationflags=_WIN_FLAGS
+            timeout=1800, creationflags=_WIN_FLAGS
         )
 
         if result.returncode != 0:

@@ -14,9 +14,22 @@ from datetime import datetime
 
 _API_BASE = "https://api.telegram.org/bot{token}/{method}"
 
-# Default shared bot token — users don't need to create their own bot
-DEFAULT_BOT_TOKEN = "8867237625:AAHjBLlitlcz21U8kwcdJmbju3USbG1QiPI"
-DEFAULT_CHAT_ID = "1145603533"
+# Load from secrets.json (gitignored) if available, otherwise fall back to empty
+def _load_defaults():
+    import pathlib
+    for loc in [
+        pathlib.Path(__file__).parent / "secrets.json",
+        pathlib.Path("secrets.json"),
+    ]:
+        try:
+            with open(loc, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                return data.get("telegram_bot_token", ""), data.get("telegram_chat_id", "")
+        except Exception:
+            continue
+    return "", ""
+
+DEFAULT_BOT_TOKEN, DEFAULT_CHAT_ID = _load_defaults()
 
 
 def _call(token: str, method: str, payload: dict) -> dict:

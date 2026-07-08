@@ -856,6 +856,7 @@ Transcript:
             'quiet': True,
             'no_warnings': False,
             'extract_flat': False,
+            'force_ipv4': True,
         }
         
         # Only request subtitles if a real language is selected (skip for AI transcription mode)
@@ -1376,6 +1377,7 @@ Transcript:
                 'quiet': False,  # Show warnings for debugging
                 'no_warnings': False,
                 'cookiefile': str(cookies_path),  # Ensure string path
+                'force_ipv4': True,
             }
             
             # Add Deno JS runtime if available
@@ -1628,6 +1630,7 @@ Transcript:
             'outtmpl': str(self.temp_dir / 'source.%(ext)s'),
             'quiet': True,
             'no_warnings': False,
+            'force_ipv4': True,
         }
         
         # Add Deno JS runtime if available
@@ -1869,6 +1872,7 @@ Transcript:
                 self.parse_timestamp(end_time)
             )]),
             'force_keyframes_at_cuts': True,
+            'force_ipv4': True,
         }
         
         # Add Deno JS runtime
@@ -1942,6 +1946,7 @@ Transcript:
             "--download-sections", section_str,
             "--force-keyframes-at-cuts",
             "--merge-output-format", "mp4",
+            "--force-ipv4",
             "-o", output_path,
         ]
         

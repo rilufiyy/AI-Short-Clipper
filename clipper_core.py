@@ -2670,9 +2670,7 @@ Transcript:
                 s = int(secs)
                 return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d},000"
 
-            if duration > 150:
-                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too long, skipped")
-            elif duration < 20:
+            if duration < 20:
                 self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too short, skipped")
             else:
                 # Auto-extend clips that are < 60s (but >= 20s) to reach minimum
@@ -2700,7 +2698,7 @@ Transcript:
         # If we don't have enough valid clips, warn user
         if len(valid) < num_clips:
             self.log(f"\n⚠️ WARNING: Only found {len(valid)} valid clips out of {num_clips} requested!")
-            self.log(f"   Some segments were outside the valid duration range (58–150s).")
+            self.log(f"   Some segments were outside the valid duration range (>20s required).")
             self.log(f"   Consider using a better AI model or adjusting the prompt.")
         
         return valid[:num_clips]

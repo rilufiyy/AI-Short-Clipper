@@ -14,9 +14,9 @@ from datetime import datetime, timedelta
 _TRACKER_FILE = "usage_tracker.json"
 
 PROVIDER_LIMITS = {
-    "gemini":  {"max_uses": 2, "label": "Gemini Free Tier"},
-    "openai":  {"max_uses": 2, "label": "OpenAI"},
-    "default": {"max_uses": 2, "label": "AI"},
+    "gemini":  {"max_uses": 10, "label": "Gemini Free Tier"},
+    "openai":  {"max_uses": 10, "label": "OpenAI"},
+    "default": {"max_uses": 10, "label": "AI"},
 }
 DEFAULT_RESET_HOUR = 0   # 00:00 midnight
 

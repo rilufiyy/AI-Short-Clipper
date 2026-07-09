@@ -2553,6 +2553,11 @@ Transcript:
                 + transcript[-half:]
             )
             self.log(f"  ⚠ Transcript dipotong ke {MAX_TRANSCRIPT_CHARS} karakter (terlalu panjang untuk model)")
+            self.set_progress(
+                f"⚠️ Video terlalu panjang — transcript dipotong (batas: {MAX_TRANSCRIPT_CHARS:,} karakter ≈ ~1 jam). "
+                f"AI hanya menganalisis bagian awal & akhir video. Mencari highlights...",
+                0.5
+            )
 
         # Replace placeholders safely (avoid .format() which breaks on user's curly braces)
         prompt = base_prompt.replace("{num_clips}", str(request_clips))
@@ -2661,26 +2666,33 @@ Transcript:
                 h["description"] = h.get("title", "No description")
                 self.log(f"  ⚠ Missing description for '{h.get('title', 'Unknown')}', using title")
             
-            if 58 <= duration <= 150:
-                # Auto-trim clips slightly over 120s rather than discarding them
-                if duration > 120:
-                    from datetime import timedelta
+            def _fmt_timestamp(secs: float) -> str:
+                s = int(secs)
+                return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d},000"
+
+            if duration > 150:
+                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too long, skipped")
+            elif duration < 20:
+                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too short, skipped")
+            else:
+                # Auto-extend clips that are < 60s (but >= 20s) to reach minimum
+                if duration < 60:
+                    start_secs = self.parse_timestamp(h["start_time"])
+                    new_end_secs = start_secs + 62
+                    h["end_time"] = _fmt_timestamp(new_end_secs)
+                    h["duration_seconds"] = 62
+                    self.log(f"  ✓ {h['title']} ({duration:.0f}s → extended to 62s) [🔥 {h.get('virality_score', 5)}/10]")
+                # Auto-trim clips that are > 120s
+                elif duration > 120:
                     start_secs = self.parse_timestamp(h["start_time"])
                     new_end_secs = start_secs + 118
-                    h_end = str(timedelta(seconds=int(new_end_secs))).replace(":", ":", 2)
-                    # Format as HH:MM:SS,000
-                    parts = str(timedelta(seconds=int(new_end_secs))).split(":")
-                    h["end_time"] = f"{int(parts[0]):02d}:{int(parts[1]):02d}:{int(float(parts[2])):02d},000"
+                    h["end_time"] = _fmt_timestamp(new_end_secs)
                     h["duration_seconds"] = 118
                     self.log(f"  ✓ {h['title']} ({duration:.0f}s → trimmed to 118s) [🔥 {h.get('virality_score', 5)}/10]")
                 else:
-                    virality = h.get("virality_score", 5)
-                    self.log(f"  ✓ {h['title']} ({duration:.0f}s) [🔥 {virality}/10]")
+                    h["duration_seconds"] = round(duration, 1)
+                    self.log(f"  ✓ {h['title']} ({duration:.0f}s) [🔥 {h.get('virality_score', 5)}/10]")
                 valid.append(h)
-            elif duration > 150:
-                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too long, skipped")
-            elif duration < 58:
-                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too short, skipped")
             
             if len(valid) >= num_clips:
                 break
@@ -5309,38 +5321,40 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Create Drive session folder (once per video) if auto-upload is enabled
         self._init_gdrive_session()
 
-        # Process each selected clip
+        # Process each selected clip — skip failed clips, continue with others
         total_clips = len(selected_highlights)
+        failed_clips = []
+        succeeded_clips = 0
+
         for i, highlight in enumerate(selected_highlights, 1):
             if self.is_cancelled():
                 return
 
+            clip_title = highlight.get('title', f'Clip {i}')
+
             # Step A: Download video section for this clip
-            self.set_progress(f"Clip {i}/{total_clips}: Downloading video section...", 
+            self.set_progress(f"Clip {i}/{total_clips}: Downloading video section...",
                             0.05 + (0.9 * (i - 1) / total_clips))
-            self.log(f"\n[Clip {i}/{total_clips}] Downloading: {highlight.get('title', 'Untitled')}")
-            
+            self.log(f"\n[Clip {i}/{total_clips}] Downloading: {clip_title}")
+
             section_filename = f"section_{i:03d}.mp4"
             section_path = str(self.temp_dir / section_filename)
-            
+
             try:
                 video_path = self.download_video_section(
-                    url, 
-                    highlight["start_time"], 
+                    url,
+                    highlight["start_time"],
                     highlight["end_time"],
                     section_path
                 )
             except Exception as e:
-                self.log(f"  ✗ Failed to download section: {e}")
-                raise Exception(
-                    f"Failed to download video section for clip {i}!\n\n"
-                    f"Title: {highlight.get('title', 'Untitled')}\n"
-                    f"Time: {highlight['start_time']} → {highlight['end_time']}\n\n"
-                    f"Error: {str(e)}"
-                )
-            
+                self.log(f"  ✗ Clip {i} download failed — skipping: {e}")
+                self.set_progress(f"⚠️ Clip {i}/{total_clips} gagal didownload, lanjut ke clip berikutnya...",
+                                0.05 + (0.9 * i / total_clips))
+                failed_clips.append((i, clip_title, str(e)))
+                continue
+
             # Step B: Process the downloaded section
-            # Create clip folder only after download succeeds (avoids empty dirs on failure)
             _ct = highlight.get("title", "")
             _cslug = re.sub(r'[<>:"/\\|?*\n\r\t]', '', _ct)
             _cslug = re.sub(r'[\s_]+', ' ', _cslug).strip()[:50].strip()
@@ -5349,20 +5363,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             clip_folder.mkdir(parents=True, exist_ok=True)
 
             try:
-                # Pass output_folder so process_clip writes directly into clip_folder
-                # without creating date-nested subdirectories
                 self.process_clip(video_path, highlight, i, total_clips,
                                 add_captions=add_captions, add_hook=add_hook,
                                 pre_cut=True, output_folder=clip_folder)
-            except Exception:
-                # Clean up empty/partial folder if processing failed
+                succeeded_clips += 1
+            except Exception as e:
+                self.log(f"  ✗ Clip {i} processing failed — skipping: {e}")
+                self.set_progress(f"⚠️ Clip {i}/{total_clips} gagal diproses, lanjut ke clip berikutnya...",
+                                0.05 + (0.9 * i / total_clips))
+                failed_clips.append((i, clip_title, str(e)))
                 try:
                     import shutil as _shutil
                     if clip_folder.exists():
                         _shutil.rmtree(clip_folder, ignore_errors=True)
                 except Exception:
                     pass
-                raise
 
             # Clean up section file after processing
             try:
@@ -5370,6 +5385,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                     os.remove(video_path)
             except Exception:
                 pass
+
+        # Log summary of failed clips
+        if failed_clips:
+            self.log(f"\n⚠️ {len(failed_clips)} clip gagal diproses:")
+            for idx, title, err in failed_clips:
+                self.log(f"  - Clip {idx}: {title[:40]} → {err[:80]}")
+
+        if succeeded_clips == 0:
+            raise Exception(
+                f"Semua {total_clips} clip gagal diproses!\n\n"
+                + "\n".join(f"Clip {i}: {t[:40]}" for i, t, _ in failed_clips)
+            )
         
         # Cleanup temp files
         self.set_progress("Cleaning up...", 0.95)
@@ -5383,7 +5410,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             
             session_data["status"] = "completed"
             session_data["completed_at"] = datetime.now().isoformat()
-            session_data["clips_processed"] = total_clips
+            session_data["clips_processed"] = succeeded_clips
+            session_data["clips_failed"] = len(failed_clips)
             
             with open(session_data_file, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, indent=2, ensure_ascii=False)

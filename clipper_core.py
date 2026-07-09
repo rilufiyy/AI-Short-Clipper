@@ -217,7 +217,7 @@ class AutoClipperCore:
         month = _month_id[now.month - 1]
         day = now.strftime("%d")
         clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', video_title)
-        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80] or "video"
+        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80].strip() or "video"
         base = self.output_dir / "sessions" / year / month / day / clean
         if base.exists():
             base = base.parent / f"{clean} ({now.strftime('%H%M%S')})"
@@ -2661,11 +2661,23 @@ Transcript:
                 h["description"] = h.get("title", "No description")
                 self.log(f"  ⚠ Missing description for '{h.get('title', 'Unknown')}', using title")
             
-            if 58 <= duration <= 120:
+            if 58 <= duration <= 150:
+                # Auto-trim clips slightly over 120s rather than discarding them
+                if duration > 120:
+                    from datetime import timedelta
+                    start_secs = self.parse_timestamp(h["start_time"])
+                    new_end_secs = start_secs + 118
+                    h_end = str(timedelta(seconds=int(new_end_secs))).replace(":", ":", 2)
+                    # Format as HH:MM:SS,000
+                    parts = str(timedelta(seconds=int(new_end_secs))).split(":")
+                    h["end_time"] = f"{int(parts[0]):02d}:{int(parts[1]):02d}:{int(float(parts[2])):02d},000"
+                    h["duration_seconds"] = 118
+                    self.log(f"  ✓ {h['title']} ({duration:.0f}s → trimmed to 118s) [🔥 {h.get('virality_score', 5)}/10]")
+                else:
+                    virality = h.get("virality_score", 5)
+                    self.log(f"  ✓ {h['title']} ({duration:.0f}s) [🔥 {virality}/10]")
                 valid.append(h)
-                virality = h.get("virality_score", 5)
-                self.log(f"  ✓ {h['title']} ({duration:.0f}s) [🔥 {virality}/10]")
-            elif duration > 120:
+            elif duration > 150:
                 self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too long, skipped")
             elif duration < 58:
                 self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too short, skipped")
@@ -2676,7 +2688,7 @@ Transcript:
         # If we don't have enough valid clips, warn user
         if len(valid) < num_clips:
             self.log(f"\n⚠️ WARNING: Only found {len(valid)} valid clips out of {num_clips} requested!")
-            self.log(f"   AI returned many segments that were too short (< 58s).")
+            self.log(f"   Some segments were outside the valid duration range (58–150s).")
             self.log(f"   Consider using a better AI model or adjusting the prompt.")
         
         return valid[:num_clips]
@@ -5331,7 +5343,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             # Create clip folder only after download succeeds (avoids empty dirs on failure)
             _ct = highlight.get("title", "")
             _cslug = re.sub(r'[<>:"/\\|?*\n\r\t]', '', _ct)
-            _cslug = re.sub(r'[\s_]+', ' ', _cslug).strip()[:50]
+            _cslug = re.sub(r'[\s_]+', ' ', _cslug).strip()[:50].strip()
             _cname = f"clip_{i:03d}" + (f" - {_cslug}" if _cslug else "")
             clip_folder = clips_dir / _cname
             clip_folder.mkdir(parents=True, exist_ok=True)

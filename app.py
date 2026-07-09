@@ -1843,7 +1843,7 @@ class YTShortClipperApp(ctk.CTk):
 
             _ct = highlight.get("title", "")
             _cslug = _re.sub(r'[<>:"/\\|?*\n\r\t]', '', _ct)
-            _cslug = _re.sub(r'[\s_]+', ' ', _cslug).strip()[:50]
+            _cslug = _re.sub(r'[\s_]+', ' ', _cslug).strip()[:50].strip()
             _cname = f"clip_{i:03d}" + (f" - {_cslug}" if _cslug else "")
             clip_folder = clips_dir / _cname
             clip_folder.mkdir(parents=True, exist_ok=True)
@@ -1926,6 +1926,11 @@ class YTShortClipperApp(ctk.CTk):
         increment(provider=provider, reset_hour=reset_hour)
         debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["processing"].on_complete()
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONINFORMATION)
+        except Exception:
+            pass
 
         # Reset back button to default (processing page)
         self.pages["results"].set_back_callback(self.pages["results"].default_back_callback)
@@ -1965,6 +1970,11 @@ class YTShortClipperApp(ctk.CTk):
         increment(provider=provider, reset_hour=reset_hour)
         debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["clipping"].on_complete()
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONINFORMATION)
+        except Exception:
+            pass
 
         # Telegram notification (background, non-blocking)
         def _notify():
@@ -1996,6 +2006,11 @@ class YTShortClipperApp(ctk.CTk):
         """Called when clipping encounters an error"""
         self.processing = False
         self.pages["clipping"].on_error(error)
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        except Exception:
+            pass
 
         # Telegram error notification (background, non-blocking)
         def _notify_err():
@@ -2022,6 +2037,11 @@ class YTShortClipperApp(ctk.CTk):
     def on_error(self, error):
         self.processing = False
         self.pages["processing"].on_error(error)
+        try:
+            import winsound
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+        except Exception:
+            pass
 
         # Telegram error notification (background, non-blocking)
         def _notify_err():

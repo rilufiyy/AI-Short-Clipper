@@ -82,7 +82,7 @@ class GDriveUploader:
         month = month_names[now.month - 1]
         day = now.strftime("%d")
         clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', yt_title).strip()
-        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80] or "video"
+        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:80].strip() or "video"
         folder_path = f"AI YT Clipper/{year}/{month}/{day}/{clean}"
         self.log(f"  [Drive] Session folder: {folder_path}")
         return folder_path
@@ -115,7 +115,7 @@ class GDriveUploader:
 
         # Build readable clip folder name
         if clip_index is not None and clip_title:
-            clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', clip_title).strip()[:60]
+            clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', clip_title).strip()[:60].strip()
             clip_folder_name = f"Clip {clip_index:02d} — {clean}"
         else:
             clip_folder_name = local_folder.name

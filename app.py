@@ -1928,7 +1928,9 @@ class YTShortClipperApp(ctk.CTk):
         self.pages["processing"].on_complete()
         try:
             import winsound
-            winsound.MessageBeep(winsound.MB_ICONINFORMATION)
+            winsound.Beep(1000, 300)
+            winsound.Beep(1200, 300)
+            winsound.Beep(1500, 400)
         except Exception:
             pass
 
@@ -1972,7 +1974,9 @@ class YTShortClipperApp(ctk.CTk):
         self.pages["clipping"].on_complete()
         try:
             import winsound
-            winsound.MessageBeep(winsound.MB_ICONINFORMATION)
+            winsound.Beep(1000, 300)
+            winsound.Beep(1200, 300)
+            winsound.Beep(1500, 400)
         except Exception:
             pass
 
@@ -2008,7 +2012,8 @@ class YTShortClipperApp(ctk.CTk):
         self.pages["clipping"].on_error(error)
         try:
             import winsound
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            winsound.Beep(800, 300)
+            winsound.Beep(500, 500)
         except Exception:
             pass
 
@@ -2039,7 +2044,8 @@ class YTShortClipperApp(ctk.CTk):
         self.pages["processing"].on_error(error)
         try:
             import winsound
-            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+            winsound.Beep(800, 300)
+            winsound.Beep(500, 500)
         except Exception:
             pass
 

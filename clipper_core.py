@@ -856,6 +856,7 @@ Transcript:
             'quiet': True,
             'no_warnings': False,
             'extract_flat': False,
+            'force_ipv4': True,
         }
         
         # Only request subtitles if a real language is selected (skip for AI transcription mode)
@@ -1107,10 +1108,11 @@ Transcript:
                 self.ytdlp_path,
                 "-f", format_selector,
                 "--format-sort", "res,br",
+                "--force-ipv4",
                 *base_args,
                 *strategy["extra_args"],
             ]
-            
+
             # Only request subtitles if a real language is selected
             if self.subtitle_language and self.subtitle_language != "none":
                 cmd.extend([
@@ -1376,6 +1378,7 @@ Transcript:
                 'quiet': False,  # Show warnings for debugging
                 'no_warnings': False,
                 'cookiefile': str(cookies_path),  # Ensure string path
+                'force_ipv4': True,
             }
             
             # Add Deno JS runtime if available
@@ -1628,6 +1631,7 @@ Transcript:
             'outtmpl': str(self.temp_dir / 'source.%(ext)s'),
             'quiet': True,
             'no_warnings': False,
+            'force_ipv4': True,
         }
         
         # Add Deno JS runtime if available
@@ -1761,22 +1765,23 @@ Transcript:
         cmd = [
             self.ytdlp_path,
             "--skip-download",
+            "--force-ipv4",
             "--write-sub", "--write-auto-sub",
             "--sub-lang", self.subtitle_language,
             "--convert-subs", "srt",
             "-o", str(self.temp_dir / "source.%(ext)s"),
         ]
-        
+
         if cookies_path:
             cmd.extend(["--cookies", cookies_path])
-        
+
         cmd.append(url)
-        
+
         result = subprocess.run(
             cmd, capture_output=True, text=True,
             creationflags=SUBPROCESS_FLAGS, timeout=30
         )
-        
+
         if result.returncode != 0:
             error_msg = result.stderr.strip() if result.stderr else "Unknown error"
             self.log(f"  ✗ Failed: {error_msg[:100]}")
@@ -1869,6 +1874,7 @@ Transcript:
                 self.parse_timestamp(end_time)
             )]),
             'force_keyframes_at_cuts': True,
+            'force_ipv4': True,
         }
         
         # Add Deno JS runtime
@@ -1939,6 +1945,7 @@ Transcript:
             self.ytdlp_path,
             "-f", format_selector,
             "--format-sort", "res,br",
+            "--force-ipv4",
             "--download-sections", section_str,
             "--force-keyframes-at-cuts",
             "--merge-output-format", "mp4",
@@ -2527,13 +2534,16 @@ Transcript:
         # Truncate transcript if too long (~25k token budget: ~75k chars at 3 chars/token)
         MAX_TRANSCRIPT_CHARS = 75_000
         if len(transcript) > MAX_TRANSCRIPT_CHARS:
+            _orig_len = len(transcript)
             half = MAX_TRANSCRIPT_CHARS // 2
             transcript = (
                 transcript[:half]
                 + "\n\n[... TRANSCRIPT DIPOTONG — BAGIAN TENGAH DIHILANGKAN ...]\n\n"
                 + transcript[-half:]
             )
+            _warn = f"⚠ Transcript {_orig_len // 1000}k chars, dipotong ke 75k — highlight mungkin tidak optimal"
             self.log(f"  ⚠ Transcript dipotong ke {MAX_TRANSCRIPT_CHARS} karakter (terlalu panjang untuk model)")
+            self.set_progress(_warn, 0.45)
 
         # Replace placeholders safely (avoid .format() which breaks on user's curly braces)
         prompt = base_prompt.replace("{num_clips}", str(request_clips))
@@ -2621,50 +2631,69 @@ Transcript:
             self.log(f"\n💡 Error position: line {e.lineno}, column {e.colno}")
             raise Exception(f"Failed to parse GPT response as JSON: {e}\n\nFull response logged above.")
         
-        # Filter by duration (min 58s, max 120s)
+        # Filter / adjust by duration rules:
+        #   < 20s  → dibuang
+        #   20–59s → auto-extend ke 62s
+        #   60–120s → dipakai langsung
+        #   > 120s → auto-trim ke 118s
         valid = []
         for h in highlights:
             # Fallback: convert "reason" to "description" if exists
             if "reason" in h and "description" not in h:
                 h["description"] = h.pop("reason")
                 self.log(f"  ⚠ Converted 'reason' to 'description' for '{h.get('title', 'Unknown')}'")
-            
+
             duration = self.parse_timestamp(h["end_time"]) - self.parse_timestamp(h["start_time"])
+            original_duration = duration
             h["duration_seconds"] = round(duration, 1)
-            
+
             # Ensure virality_score exists (default to 5 if missing)
             if "virality_score" not in h:
                 h["virality_score"] = 5
                 self.log(f"  ⚠ Missing virality_score for '{h.get('title', 'Unknown')}', defaulting to 5")
-            
+
             # Ensure description exists
             if "description" not in h:
                 h["description"] = h.get("title", "No description")
                 self.log(f"  ⚠ Missing description for '{h.get('title', 'Unknown')}', using title")
-            
-            if 58 <= duration <= 120:
-                valid.append(h)
-                virality = h.get("virality_score", 5)
-                self.log(f"  ✓ {h['title']} ({duration:.0f}s) [🔥 {virality}/10]")
+
+            if duration < 20:
+                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Terlalu pendek (<20s), dibuang")
+                continue
+
+            if duration < 60:
+                start_sec = self.parse_timestamp(h["start_time"])
+                h["end_time"] = self._seconds_to_srt_timestamp(start_sec + 62)
+                h["duration_seconds"] = 62.0
+                duration = 62.0
+                self.log(f"  ⚡ {h['title']}: {original_duration:.0f}s → auto-extend ke 62s")
             elif duration > 120:
-                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too long, skipped")
-            elif duration < 58:
-                self.log(f"  ✗ {h['title']} ({duration:.0f}s) - Too short, skipped")
-            
+                start_sec = self.parse_timestamp(h["start_time"])
+                h["end_time"] = self._seconds_to_srt_timestamp(start_sec + 118)
+                h["duration_seconds"] = 118.0
+                duration = 118.0
+                self.log(f"  ✂ {h['title']}: {original_duration:.0f}s → auto-trim ke 118s")
+
+            virality = h.get("virality_score", 5)
+            self.log(f"  ✓ {h['title']} ({h['duration_seconds']:.0f}s) [🔥 {virality}/10]")
+            valid.append(h)
+
             if len(valid) >= num_clips:
                 break
-        
+
         # If we don't have enough valid clips, warn user
         if len(valid) < num_clips:
             self.log(f"\n⚠️ WARNING: Only found {len(valid)} valid clips out of {num_clips} requested!")
-            self.log(f"   AI returned many segments that were too short (< 58s).")
+            self.log(f"   AI returned segments that were too short (<20s) or could not be extended.")
             self.log(f"   Consider using a better AI model or adjusting the prompt.")
         
         return valid[:num_clips]
     
-    def process_clip(self, video_path: str, highlight: dict, index: int, total_clips: int = 1, add_captions: bool = True, add_hook: bool = True, pre_cut: bool = False):
+    def process_clip(self, video_path: str, highlight: dict, index: int, total_clips: int = 1,
+                     add_captions: bool = True, add_hook: bool = True, pre_cut: bool = False,
+                     output_folder=None):
         """Process a single clip: cut, portrait, hook (optional), captions (optional)
-        
+
         Args:
             video_path: Path to source video (full video or pre-cut section)
             highlight: Highlight dict with metadata
@@ -2673,32 +2702,39 @@ Transcript:
             add_captions: Whether to add captions
             add_hook: Whether to add hook
             pre_cut: If True, video_path is already a pre-cut section (skip cutting step)
+            output_folder: If provided, use this path directly as the clip output folder
+                           (skip date-nested structure creation)
         """
-        
+
         # Check cancel before starting
         if self.is_cancelled():
             return
-        
-        # Create output folder: output/YYYY/MM/DD/nama-kajian/clipNN-title-slug
-        _title_raw = highlight.get("title", "")
-        _slug = re.sub(r"[^\w\s-]", "", _title_raw.lower())
-        _slug = re.sub(r"[\s_]+", "-", _slug).strip("-")[:40]
-        _now = datetime.now()
 
-        _src_title = self.source_video_info.get("title", "") if self.source_video_info else ""
-        _kajian_slug = re.sub(r"[^\w\s-]", "", _src_title)
-        _kajian_slug = re.sub(r"[\s_]+", "-", _kajian_slug).strip("-")[:60] or "kajian"
+        # Create output folder
+        if output_folder is not None:
+            clip_dir = Path(output_folder)
+            clip_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            # Fallback: date-nested structure
+            _title_raw = highlight.get("title", "")
+            _slug = re.sub(r"[^\w\s-]", "", _title_raw.lower())
+            _slug = re.sub(r"[\s_]+", "-", _slug).strip("-")[:40]
+            _now = datetime.now()
 
-        folder_name = f"clip{index:02d}" + (f"-{_slug}" if _slug else "")
-        clip_dir = (
-            self.output_dir
-            / _now.strftime("%Y")
-            / _now.strftime("%m")
-            / _now.strftime("%d")
-            / _kajian_slug
-            / folder_name
-        )
-        clip_dir.mkdir(parents=True, exist_ok=True)
+            _src_title = self.source_video_info.get("title", "") if self.source_video_info else ""
+            _kajian_slug = re.sub(r"[^\w\s-]", "", _src_title)
+            _kajian_slug = re.sub(r"[\s_]+", "-", _kajian_slug).strip("-")[:60] or "kajian"
+
+            folder_name = f"clip{index:02d}" + (f"-{_slug}" if _slug else "")
+            clip_dir = (
+                self.output_dir
+                / _now.strftime("%Y")
+                / _now.strftime("%m")
+                / _now.strftime("%d")
+                / _kajian_slug
+                / folder_name
+            )
+            clip_dir.mkdir(parents=True, exist_ok=True)
 
         self.log(f"  Output folder: {clip_dir}")
         
@@ -5137,6 +5173,36 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         
         if not Path(output_path).exists():
             raise Exception("Failed to apply credit watermark")
+
+    def _make_session_dir(self, video_title: str = "") -> Path:
+        """Create a unique session directory with structure:
+        sessions/YYYY/NamaBulan-MM/DD/Judul Video/
+
+        If the target path already exists, a HHMMSS suffix is appended to avoid
+        collisions when the same video is processed multiple times on the same day.
+        """
+        now = datetime.now()
+        _month_names = [
+            "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+            "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+        ]
+        year = now.strftime("%Y")
+        month_id = f"{_month_names[now.month - 1]}-{now.strftime('%m')}"
+        day = now.strftime("%d")
+
+        clean = re.sub(r'[<>:"/\\|?*\n\r\t]', '', video_title).strip()
+        clean = re.sub(r'[\s_]+', ' ', clean).strip()[:60] or "video"
+
+        target = self.output_dir / "sessions" / year / month_id / day / clean
+        if not target.exists():
+            target.mkdir(parents=True, exist_ok=True)
+            return target
+
+        # Duplicate: append HHMMSS
+        suffix = now.strftime("%H%M%S")
+        target = self.output_dir / "sessions" / year / month_id / day / f"{clean}_{suffix}"
+        target.mkdir(parents=True, exist_ok=True)
+        return target
 
     def find_highlights_only(self, url: str, num_clips: int = 5,
                              clip_mode: str = "random") -> dict:

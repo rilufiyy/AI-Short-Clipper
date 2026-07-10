@@ -1272,7 +1272,7 @@ class YTShortClipperApp(ctk.CTk):
         from utils.gemini_client import detect_provider
         hf_key = self.config.get("ai_providers", {}).get("highlight_finder", {}).get("api_key", "")
         provider = detect_provider(hf_key)
-        clip_limit = 3 if provider == "gemini" else 5
+        clip_limit = 3 if provider == "gemini" else 10
         if num_clips > clip_limit:
             provider_label = "Gemini Free Tier" if provider == "gemini" else "OpenAI"
             messagebox.showwarning(
@@ -1843,7 +1843,7 @@ class YTShortClipperApp(ctk.CTk):
             if self.cancelled:
                 return
 
-            _clip_title = highlight.get("title", "")[:50].strip()
+            _clip_title = re.sub(r'[<>:"/\\|?*\n\r\t]', '', highlight.get("title", "")).strip()[:50].strip()
             _folder_name = f"clip_{i:03d} - {_clip_title}" if _clip_title else f"clip_{i:03d}"
             clip_folder = clips_dir / _folder_name
             clip_folder.mkdir(parents=True, exist_ok=True)

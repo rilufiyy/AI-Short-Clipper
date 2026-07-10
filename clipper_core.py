@@ -5370,8 +5370,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
             self.log(f"\n[Clip {i}/{total_clips}] {highlight.get('title', 'Untitled')}")
 
-            # Build clip folder name: clip_001 - Judul Clip
-            _clip_title = highlight.get("title", "")[:50].strip()
+            # Build clip folder name: clip_001 - Judul Clip (strip Windows-illegal chars)
+            _clip_title = re.sub(r'[<>:"/\\|?*\n\r\t]', '', highlight.get("title", "")).strip()[:50].strip()
             _folder_name = f"clip_{i:03d} - {_clip_title}" if _clip_title else f"clip_{i:03d}"
             clip_folder = clips_dir / _folder_name
             clip_folder.mkdir(parents=True, exist_ok=True)

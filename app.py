@@ -1793,20 +1793,23 @@ class YTShortClipperApp(ctk.CTk):
         for i, highlight in enumerate(selected_highlights, 1):
             if self.cancelled:
                 return
-            
-            clip_folder = clips_dir / f"clip_{i:03d}"
+
+            _clip_title = highlight.get("title", "")[:50].strip()
+            _folder_name = f"clip_{i:03d} - {_clip_title}" if _clip_title else f"clip_{i:03d}"
+            clip_folder = clips_dir / _folder_name
             clip_folder.mkdir(parents=True, exist_ok=True)
-            
-            original_output_dir = core.output_dir
-            core.output_dir = clip_folder.parent
-            
+
             try:
                 core.process_clip(video_path, highlight, i, total_clips,
                                 add_captions=self.add_captions, add_hook=self.add_hook,
-                                pre_cut=False)
-            finally:
-                core.output_dir = original_output_dir
-        
+                                pre_cut=False, output_folder=clip_folder)
+            except Exception as e:
+                self.after(0, lambda msg=str(e): self.update_clipping_status(f"  ✗ Clip {i} gagal: {msg}"))
+                import shutil as _shutil
+                if clip_folder.exists() and not any(clip_folder.iterdir()):
+                    _shutil.rmtree(clip_folder, ignore_errors=True)
+                continue
+
         core.set_progress("Cleaning up...", 0.95)
         core.cleanup()
         core.set_progress("Complete!", 1.0)
@@ -1872,6 +1875,13 @@ class YTShortClipperApp(ctk.CTk):
         increment(provider=provider, reset_hour=reset_hour)
         debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["processing"].on_complete()
+        try:
+            import winsound
+            winsound.Beep(1000, 300)
+            winsound.Beep(1200, 300)
+            winsound.Beep(1500, 400)
+        except Exception:
+            pass
 
         # Reset back button to default (processing page)
         self.pages["results"].set_back_callback(self.pages["results"].default_back_callback)
@@ -1911,6 +1921,13 @@ class YTShortClipperApp(ctk.CTk):
         increment(provider=provider, reset_hour=reset_hour)
         debug_log(f"[Quota] {get_status_text(provider, reset_hour)}")
         self.pages["clipping"].on_complete()
+        try:
+            import winsound
+            winsound.Beep(1000, 300)
+            winsound.Beep(1200, 300)
+            winsound.Beep(1500, 400)
+        except Exception:
+            pass
 
         # Telegram notification (background, non-blocking)
         def _notify():
@@ -1942,6 +1959,12 @@ class YTShortClipperApp(ctk.CTk):
         """Called when clipping encounters an error"""
         self.processing = False
         self.pages["clipping"].on_error(error)
+        try:
+            import winsound
+            winsound.Beep(800, 300)
+            winsound.Beep(500, 500)
+        except Exception:
+            pass
 
         # Telegram error notification (background, non-blocking)
         def _notify_err():
@@ -1968,6 +1991,12 @@ class YTShortClipperApp(ctk.CTk):
     def on_error(self, error):
         self.processing = False
         self.pages["processing"].on_error(error)
+        try:
+            import winsound
+            winsound.Beep(800, 300)
+            winsound.Beep(500, 500)
+        except Exception:
+            pass
 
         # Telegram error notification (background, non-blocking)
         def _notify_err():

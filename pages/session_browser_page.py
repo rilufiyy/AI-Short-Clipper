@@ -77,20 +77,16 @@ class SessionBrowserPage(ctk.CTkFrame):
                 font=ctk.CTkFont(size=13), text_color="gray").pack(pady=30)
             return
         
-        # Find all session folders with session_data.json
+        # Find all session folders with session_data.json (recursive for date-nested structure)
         sessions = []
-        for session_folder in sorted(sessions_dir.iterdir(), reverse=True):
-            if not session_folder.is_dir():
-                continue
-            
-            session_file = session_folder / "session_data.json"
-            if session_file.exists():
-                try:
-                    with open(session_file, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    sessions.append((session_folder, data))
-                except:
-                    pass
+        for session_file in sorted(sessions_dir.rglob("session_data.json"), reverse=True):
+            session_folder = session_file.parent
+            try:
+                with open(session_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                sessions.append((session_folder, data))
+            except:
+                pass
         
         if not sessions:
             ctk.CTkLabel(self.list_frame, text="📂 No sessions found",

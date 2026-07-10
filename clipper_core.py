@@ -2442,15 +2442,14 @@ Transcript:
             dict: Same session_data format as find_highlights_only
         """
         from datetime import datetime
-        
-        # Use existing session_dir or create new one
+
+        # Use existing session_dir or create proper one with video title
         if session_dir:
             session_dir = Path(session_dir)
         else:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            session_dir = self.output_dir / "sessions" / timestamp
-            session_dir.mkdir(parents=True, exist_ok=True)
-        
+            video_title = (video_info or {}).get("title", "")
+            session_dir = self._make_session_dir(video_title)
+
         # Update temp_dir to session-specific temp
         self.temp_dir = session_dir / "_temp"
         self.temp_dir.mkdir(parents=True, exist_ok=True)
@@ -5223,17 +5222,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Store source URL for metadata
         self.source_url = url
 
-        # Create session directory with timestamp
         from datetime import datetime
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        session_dir = self.output_dir / "sessions" / timestamp
-        session_dir.mkdir(parents=True, exist_ok=True)
+        import shutil as _shutil
 
-        # Update temp_dir to session-specific temp
-        self.temp_dir = session_dir / "_temp"
-        self.temp_dir.mkdir(parents=True, exist_ok=True)
-
-        self.log(f"Session directory: {session_dir}")
+        # Use a preliminary temp dir for subtitle download (video title not yet known)
+        _init_temp = self.output_dir / "_temp" / f"dl_{datetime.now().strftime('%H%M%S%f')}"
+        _init_temp.mkdir(parents=True, exist_ok=True)
+        self.temp_dir = _init_temp
 
         # Step 1: Download subtitle only (no video!)
         self.set_progress("Downloading subtitle...", 0.1)
@@ -5242,10 +5237,30 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         # Store channel name and source video info for metadata
         self.channel_name = video_info.get("channel", "") if video_info else ""
         self.source_video_info = video_info or {}
-        
+
+        # Create proper session dir using video title (available after download)
+        video_title = (video_info or {}).get("title", "")
+        session_dir = self._make_session_dir(video_title)
+
+        # Move subtitle file into session dir's temp and clean up preliminary dir
+        new_temp = session_dir / "_temp"
+        new_temp.mkdir(parents=True, exist_ok=True)
+
+        if srt_path and Path(srt_path).exists():
+            _new_srt = new_temp / Path(srt_path).name
+            _shutil.move(str(srt_path), str(_new_srt))
+            srt_path = str(_new_srt)
+        else:
+            srt_path = None
+
+        _shutil.rmtree(str(_init_temp), ignore_errors=True)
+        self.temp_dir = new_temp
+
+        self.log(f"Session directory: {session_dir}")
+
         if self.is_cancelled():
             return None
-        
+
         if not srt_path:
             raise SubtitleNotFoundError(
                 f"No subtitle available for language: {self.subtitle_language.upper()}",
@@ -5353,54 +5368,60 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             if self.is_cancelled():
                 return
 
-            # Step A: Download video section for this clip
-            self.set_progress(f"Clip {i}/{total_clips}: Downloading video section...", 
-                            0.05 + (0.9 * (i - 1) / total_clips))
-            self.log(f"\n[Clip {i}/{total_clips}] Downloading: {highlight.get('title', 'Untitled')}")
-            
+            self.log(f"\n[Clip {i}/{total_clips}] {highlight.get('title', 'Untitled')}")
+
+            # Build clip folder name: clip_001 - Judul Clip
+            _clip_title = highlight.get("title", "")[:50].strip()
+            _folder_name = f"clip_{i:03d} - {_clip_title}" if _clip_title else f"clip_{i:03d}"
+            clip_folder = clips_dir / _folder_name
+            clip_folder.mkdir(parents=True, exist_ok=True)
+
             section_filename = f"section_{i:03d}.mp4"
             section_path = str(self.temp_dir / section_filename)
-            
+
             try:
+                # Step A: Download video section for this clip
+                self.set_progress(
+                    f"Clip {i}/{total_clips}: Downloading video section...",
+                    0.05 + (0.9 * (i - 1) / total_clips),
+                )
                 video_path = self.download_video_section(
-                    url, 
-                    highlight["start_time"], 
+                    url,
+                    highlight["start_time"],
                     highlight["end_time"],
-                    section_path
+                    section_path,
                 )
+
+                # Step B: Process the downloaded section directly into clip_folder
+                self.process_clip(
+                    video_path, highlight, i, total_clips,
+                    add_captions=add_captions, add_hook=add_hook,
+                    pre_cut=True, output_folder=clip_folder,
+                )
+
+                # Clean up section file after successful processing
+                try:
+                    if Path(video_path).exists():
+                        os.remove(video_path)
+                except Exception:
+                    pass
+
             except Exception as e:
-                self.log(f"  ✗ Failed to download section: {e}")
-                raise Exception(
-                    f"Failed to download video section for clip {i}!\n\n"
-                    f"Title: {highlight.get('title', 'Untitled')}\n"
-                    f"Time: {highlight['start_time']} → {highlight['end_time']}\n\n"
-                    f"Error: {str(e)}"
-                )
-            
-            # Step B: Process the downloaded section
-            # Create clip-specific folder
-            clip_folder = clips_dir / f"clip_{i:03d}"
-            clip_folder.mkdir(parents=True, exist_ok=True)
-            
-            # Temporarily override output_dir for this clip
-            original_output_dir = self.output_dir
-            self.output_dir = clip_folder.parent
-            
-            try:
-                # Pass pre_cut=True since we downloaded the section already
-                self.process_clip(video_path, highlight, i, total_clips, 
-                                add_captions=add_captions, add_hook=add_hook,
-                                pre_cut=True)
-            finally:
-                # Restore original output_dir
-                self.output_dir = original_output_dir
-            
-            # Clean up section file after processing
-            try:
-                if Path(video_path).exists():
-                    os.remove(video_path)
-            except Exception:
-                pass
+                self.log(f"  ✗ Clip {i} gagal, dilanjutkan ke clip berikutnya: {e}")
+                # Remove empty/partial clip folder
+                try:
+                    import shutil as _shutil_clip
+                    if clip_folder.exists():
+                        _shutil_clip.rmtree(str(clip_folder), ignore_errors=True)
+                except Exception:
+                    pass
+                # Clean up section file if present
+                try:
+                    if Path(section_path).exists():
+                        os.remove(section_path)
+                except Exception:
+                    pass
+                continue
         
         # Cleanup temp files
         self.set_progress("Cleaning up...", 0.95)

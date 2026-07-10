@@ -47,6 +47,7 @@ a = Analysis(
         ('telegram_notifier.py', '.'),
         ('tiktok_uploader.py', '.'),
         ('version.py', '.'),
+        *([('secrets.json', '.')] if os.path.exists('secrets.json') else []),
     ],
     hiddenimports=[
         'customtkinter',
